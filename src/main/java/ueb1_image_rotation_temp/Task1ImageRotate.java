@@ -1,4 +1,4 @@
-package ueb1_image_rotation;
+package ueb1_image_rotation_temp;
 
 /*
  * JOCL - Java bindings for OpenCL

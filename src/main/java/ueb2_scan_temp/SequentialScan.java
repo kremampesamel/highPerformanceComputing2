@@ -1,4 +1,4 @@
-package ueb2_scan;
+package ueb2_scan_temp;
 
 import java.io.IOException;
 

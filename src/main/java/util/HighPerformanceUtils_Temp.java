@@ -1,3 +1,5 @@
+package util;
+
 import org.jocl.Pointer;
 import org.jocl.cl_device_id;
 import org.jocl.cl_platform_id;
@@ -5,7 +7,7 @@ import org.jocl.cl_platform_id;
 import static org.jocl.CL.clGetDeviceInfo;
 import static org.jocl.CL.clGetPlatformInfo;
 
-public class HighPerformanceUtils {
+public class HighPerformanceUtils_Temp {
 
     /**
      * Returns the value of the device info parameter with the given name

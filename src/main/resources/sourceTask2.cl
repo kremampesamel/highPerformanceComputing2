@@ -10,7 +10,6 @@ __kernel void prescan(
     temp[2*localId] = g_idata[2*thid]; // load input into shared memory
     temp[2*localId+1] = g_idata[2*thid+1];
 
-//>> /2*2
     for (int d = numberOfElements>>1; d > 0; d >>= 1)   // build sum in place up the tree
     {
               barrier(CLK_LOCAL_MEM_FENCE); //CLK_LOCAL_MEM_FENCE CLK_GLOBAL_MEM_FENCE
@@ -19,8 +18,6 @@ __kernel void prescan(
                       int ai = offset*(2*localId+1)-1;
                       int bi = offset*(2*localId+2)-1;
                       temp[bi] += temp[ai];
-                      //printf("Threadid %d , localId: %d , tempValue %d ,tempValueWithLocalId2 %d \n", thid, localId, temp[localId], temp[localId+1]);
-                      //printf("%d \n", temp[ai]);
                   }
                   offset *= 2;
     }

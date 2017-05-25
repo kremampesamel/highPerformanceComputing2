@@ -29,7 +29,7 @@ public class Task1ImageRotate {
 
     public static void main(String args[]) throws IOException {
         CL.setExceptionsEnabled(true);
-        programSource = FileUtils.readFileToString(new File("sourceTask1.cl"), defaultCharset());
+        programSource = FileUtils.readFileToString(new File("src/main/resources/sourceTask1.cl"), defaultCharset());
 
         inputImage = ImageIO.read(new File("lena512color.png"));
         outputImage = new BufferedImage(
@@ -42,7 +42,6 @@ public class Task1ImageRotate {
 
         Pointer srcA = Pointer.to(srcArrayA);
         Pointer dst = Pointer.to(dstArray);
-
 
         // The platform, device type and device number
         // that will be used
@@ -131,12 +130,10 @@ public class Task1ImageRotate {
         float rotation = -10.0f;
 
         clSetKernelArg(kernel, 4,
-//                Sizeof.cl_float, Pointer.to(new float[]{(float) Math.sin(rotation * Math.PI / 180.0f)}));
                 Sizeof.cl_float, Pointer.to(new float[]{(float) Math.sin(Math.toRadians(rotation))}));
 
         clSetKernelArg(kernel, 5,
                 Sizeof.cl_float, Pointer.to(new float[]{(float) Math.cos(Math.toRadians(rotation))}));
-//                Sizeof.cl_float, Pointer.to(new float[]{(float) Math.cos(rotation * Math.PI / 180.0f)}));
 
         // Set the work-item dimensions
         long global_work_size[] = new long[]{inputImage.getWidth(), inputImage.getHeight()};
@@ -149,7 +146,6 @@ public class Task1ImageRotate {
         // Read the output data
         clEnqueueReadBuffer(commandQueue, memObjects[1], CL_TRUE, 0,
                 inputImage.getWidth() * inputImage.getHeight() * Sizeof.cl_int, dst, 0, null, null);
-
 
         outputImage.setRGB(0, 0, outputImage.getWidth(), outputImage.getHeight(), dstArray, 0, outputImage.getWidth());
 

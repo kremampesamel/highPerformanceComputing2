@@ -9,9 +9,8 @@ __kernel void addScannedSums(
     //fourth scan value to each value in fourth workgroup
 
     int thid = get_global_id(0);
-    int localId = get_local_id(0);
+    int groupId = get_group_id(0);
 
-    g_scannedOutputdata[thid] = g_scannedInputData[localId] + scannedSums[localId];
-    g_scannedOutputdata[thid+1] = g_scannedInputData[localId+1] + scannedSums[localId+1];
-
+    g_scannedOutputdata[2*thid] = g_scannedInputData[2*thid] + scannedSums[groupId];
+    g_scannedOutputdata[2*thid+1] = g_scannedInputData[2*thid+1] + scannedSums[groupId];
 }

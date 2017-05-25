@@ -65,7 +65,7 @@ public class ParallelScanMassaros {
         long global_work_size[] = new long[]{numberOfElements / 2};//anzahl der threads
         long local_work_size[] = new long[]{(numberOfElements / 2) / numberOfWorkgroups};//groß wie die workgroup
 
-        int[] inputDataArray = new int[]{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+        int[] inputDataArray = new int[]{1, 1, 10, 0, 11, 5, 0, 1, 1, 1, 1, 1, 1, 1, 10, 10};
         Pointer inputDataPointer = Pointer.to(inputDataArray);
 
         int outputOfFirstScanArray[] = new int[numberOfElements];

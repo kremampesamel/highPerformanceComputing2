@@ -60,8 +60,8 @@ public class ParallelScanMassaros {
         cl_kernel kernelFinalScan = clCreateKernel(programFinalScan, "addScannedSums", null);
 
         // Create input- and output data
-        int numberOfElements = 128;
-        int numberOfWorkgroups = 4;
+        int numberOfElements = 1024;//16
+        int numberOfWorkgroups = 32;//4  this seems to work for multiples correlated to number of elements
 
         long global_work_size[] = new long[]{numberOfElements / 2};//anzahl der threads
         long local_work_size[] = new long[]{(numberOfElements / 2) / numberOfWorkgroups};//groß wie die workgroup

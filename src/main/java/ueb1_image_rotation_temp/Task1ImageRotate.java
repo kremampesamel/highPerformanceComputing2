@@ -1,12 +1,5 @@
 package ueb1_image_rotation_temp;
 
-/*
- * JOCL - Java bindings for OpenCL
- *
- * Copyright 2009 Marco Hutter - http://www.jocl.org/
- */
-
-//package org.jocl.samples;
 
 import org.apache.commons.io.FileUtils;
 import org.jocl.*;

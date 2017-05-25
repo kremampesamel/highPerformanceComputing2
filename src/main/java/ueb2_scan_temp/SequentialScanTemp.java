@@ -2,7 +2,7 @@ package ueb2_scan_temp;
 
 import java.io.IOException;
 
-public class SequentialScan {
+public class SequentialScanTemp {
 
     public static void main(String args[]) throws IOException {
         int length = 10000000;

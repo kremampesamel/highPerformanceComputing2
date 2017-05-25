@@ -34,4 +34,13 @@ public class SequentialScan implements ScanOperation {
         return stopTime - startTime;
     }
 
+    public static int[] executeScanForElements(int[] numbers) {
+        int[] result = new int[numbers.length];
+        result[0] = 0;
+        for (int i = 0; i < numbers.length -1; i++) {
+            result[i + 1] = result[i] + numbers[i];
+        }
+        return result;
+    }
+
 }

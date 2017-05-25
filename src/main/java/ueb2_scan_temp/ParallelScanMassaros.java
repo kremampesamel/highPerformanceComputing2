@@ -1,11 +1,13 @@
 package ueb2_scan_temp;
 
+import hpc_ue_2.SequentialScan;
 import org.apache.commons.io.FileUtils;
 import org.jocl.*;
 import util.HighPerformanceUtils_Temp;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Random;
 
 import static java.nio.charset.Charset.defaultCharset;
 import static org.jocl.CL.*;
@@ -16,7 +18,7 @@ public class ParallelScanMassaros {
 
     static String programSourceFinalScan = "";
 
-    public static void main(String args[]) throws IOException {
+    public static void main(String args[]) throws Exception {
         programSource = FileUtils.readFileToString(new File("src/main/resources/sourceTask2.cl"), defaultCharset());
         programSourceFinalScan = FileUtils.readFileToString(new File("src/main/resources/sourceTask2_addingScannedSums.cl"), defaultCharset());
 
@@ -59,13 +61,13 @@ public class ParallelScanMassaros {
         cl_kernel kernelFinalScan = clCreateKernel(programFinalScan, "addScannedSums", null);
 
         // Create input- and output data
-        int numberOfElements = 16;
+        int numberOfElements = 128;
         int numberOfWorkgroups = 4;
 
         long global_work_size[] = new long[]{numberOfElements / 2};//anzahl der threads
         long local_work_size[] = new long[]{(numberOfElements / 2) / numberOfWorkgroups};//groß wie die workgroup
 
-        int[] inputDataArray = new int[]{1, 1, 10, 0, 11, 5, 0, 1, 1, 1, 1, 1, 1, 1, 10, 10};
+        int[] inputDataArray = createInputData(numberOfElements);
         Pointer inputDataPointer = Pointer.to(inputDataArray);
 
         int outputOfFirstScanArray[] = new int[numberOfElements];
@@ -135,10 +137,41 @@ public class ParallelScanMassaros {
         // Release kernel, program, and memory objects
         releaseResources(context, commandQueue, memObjectsInputDataScan, memObjectsSumScan, memObjectsFinalScan, program, kernel, programFinalScan, kernelFinalScan);
 
-        printResults(outputOfFirstScanArray, workgroupSumsArray, workgroupSumsScannedArray, finalScannedArray);
+        printResults(inputDataArray, outputOfFirstScanArray, workgroupSumsArray, workgroupSumsScannedArray, finalScannedArray);
+
+        verifyResult(inputDataArray, finalScannedArray);
     }
 
-    private static void printResults(int[] outputOfFirstScanArray, int[] workgroupSumsArray, int[] workgroupSumsScannedArray, int[] finalScannedArray) {
+    private static void verifyResult(int[] inputDataArray, int[] finalScannedArray) throws Exception {
+        int[] sequentialScanResult = SequentialScan.executeScanForElements(inputDataArray);
+
+        for(int i = 0; i < finalScannedArray.length; i++) {
+            if(sequentialScanResult[i] != finalScannedArray[i]) {
+                throw new Exception("did not work correct");
+            }
+        }
+        System.out.println("\nSequential scanned array:");
+        for (int i = 0; i < sequentialScanResult.length; i++) {
+            System.out.print(sequentialScanResult[i] + " ");
+        }
+
+    }
+
+    private static int[] createInputData(int numberOfElements) {
+        int[] inputData = new int[numberOfElements];
+        Random random = new Random();
+        for(int i = 0; i < inputData.length; i++) {
+            inputData[i] = random.nextInt(11);
+        }
+        return inputData;
+    }
+
+    private static void printResults(int[] inputData, int[] outputOfFirstScanArray, int[] workgroupSumsArray, int[] workgroupSumsScannedArray, int[] finalScannedArray) {
+        System.out.println("Input data:");
+        for (int i = 0; i < inputData.length; i++) {
+            System.out.print(inputData[i] + " ");
+        }
+
         System.out.println("Scan result:");
         for (int i = 0; i < outputOfFirstScanArray.length; i++) {
             System.out.print(outputOfFirstScanArray[i] + " ");

@@ -1,4 +1,4 @@
-__kernel void addScannedSums(
+__kernel void finalScan(
     __global const int *g_scannedInputData, __global int *scannedSums,
     __global int *g_scannedOutputdata)
 {

@@ -18,8 +18,15 @@ public class ParallelScanMassaros {
     static String programSourceFinalScan = "";
 
     public static void main(String args[]) throws Exception {
-        programSource = FileUtils.readFileToString(new File("src/main/resources/sourceTask2.cl"), defaultCharset());
-        programSourceFinalScan = FileUtils.readFileToString(new File("src/main/resources/sourceTask2_addingScannedSums.cl"), defaultCharset());
+        programSource = FileUtils.readFileToString(new File("src/main/resources/sourceTask2_prescan.cl"), defaultCharset());
+        programSourceFinalScan = FileUtils.readFileToString(new File("src/main/resources/sourceTask2_finalScan.cl"), defaultCharset());
+
+        // Create input- and output data
+        int numberOfElements = 1024;//16
+        int numberOfWorkgroups = 32;//4  this seems to work for multiples correlated to number of elements
+        int[] inputDataArray = createInputData(numberOfElements);
+
+        //long start = System.currentTimeMillis();
 
         final int platformIndex = 0;
         final long deviceType = CL_DEVICE_TYPE_ALL;
@@ -57,16 +64,12 @@ public class ParallelScanMassaros {
 
         // Create the kernel
         cl_kernel kernel = clCreateKernel(program, "prescan", null);
-        cl_kernel kernelFinalScan = clCreateKernel(programFinalScan, "addScannedSums", null);
+        cl_kernel kernelFinalScan = clCreateKernel(programFinalScan, "finalScan", null);
 
-        // Create input- and output data
-        int numberOfElements = 1024;//16
-        int numberOfWorkgroups = 32;//4  this seems to work for multiples correlated to number of elements
 
         long global_work_size[] = new long[]{numberOfElements / 2};//anzahl der threads
         long local_work_size[] = new long[]{(numberOfElements / 2) / numberOfWorkgroups};//groß wie die workgroup
 
-        int[] inputDataArray = createInputData(numberOfElements);
         Pointer inputDataPointer = Pointer.to(inputDataArray);
 
         int outputOfFirstScanArray[] = new int[numberOfElements];
@@ -136,6 +139,9 @@ public class ParallelScanMassaros {
         // Release kernel, program, and memory objects
         releaseResources(context, commandQueue, memObjects, program, kernel, programFinalScan, kernelFinalScan);
 
+        //long wholeTime = System.currentTimeMillis() - start;
+        // System.out.println(String.format("Scan %s elements in %s ms", 16,  wholeTime));
+
         verifyAndPrintResults(inputDataArray, outputOfFirstScanArray, workgroupSumsArray, workgroupSumsScannedArray, finalScannedArray);
     }
 
@@ -178,7 +184,11 @@ public class ParallelScanMassaros {
     }
 
     private static void verifyResult(int[] inputDataArray, int[] finalScannedArray) throws Exception {
+        long start = System.currentTimeMillis();
         int[] sequentialScanResult = SequentialScan.executeScanForElements(inputDataArray);
+        long sequentialTime = System.currentTimeMillis() - start;
+        System.out.println(String.format("\nSequential scan %s elements in %s ms", 16,  sequentialTime));
+
 
         for(int i = 0; i < finalScannedArray.length; i++) {
             if(sequentialScanResult[i] != finalScannedArray[i]) {

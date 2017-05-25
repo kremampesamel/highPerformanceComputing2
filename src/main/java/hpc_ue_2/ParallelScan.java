@@ -65,7 +65,7 @@ public class ParallelScan implements ScanOperation {
         memObjects[0] = jocl.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, Sizeof.cl_int * size, srcA);
         memObjects[1] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * size, null);
 
-        cl_kernel kernel = jocl.createKernel("prescan", "hpc_2_prescan.cl");
+        cl_kernel kernel = jocl.createKernel("prescan", "sourceTask2_prescan.cl");
 
         // Set the arguments for the kernel
         clSetKernelArg(kernel, 0,

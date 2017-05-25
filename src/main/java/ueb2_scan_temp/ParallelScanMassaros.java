@@ -13,23 +13,11 @@ public class ParallelScanMassaros {
 
     static String programSource = "";
 
+    static String programSourceFinalScan = "";
+
     public static void main(String args[]) throws IOException {
         programSource = FileUtils.readFileToString(new File("src/main/resources/sourceTask2.cl"), defaultCharset());
-
-        // Create input- and output data
-        int numberOfElements = 16;
-        int[] inputDataArray = new int[]{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-        Pointer inputDataPointer = Pointer.to(inputDataArray);
-
-        int outputOfFirstScanArray[] = new int[numberOfElements];
-        Pointer pointerToOutputOfFirstScan = Pointer.to(outputOfFirstScanArray);
-
-        int numberOfWorkgroups = 4;
-        int workgroupSumsArray[] = new int[numberOfWorkgroups];
-        int workgroupSumsScannedArray[] = new int[numberOfWorkgroups];
-
-        Pointer pointerWorkgroupSums = Pointer.to(workgroupSumsArray);
-        Pointer pointerWorkgroupSumsScanned = Pointer.to(workgroupSumsScannedArray);
+        programSourceFinalScan = FileUtils.readFileToString(new File("src/main/resources/sourceTask2_addingScannedSums.cl"), defaultCharset());
 
         final int platformIndex = 0;
         final long deviceType = CL_DEVICE_TYPE_ALL;
@@ -59,15 +47,35 @@ public class ParallelScanMassaros {
 
         // Create the program from the source code
         cl_program program = clCreateProgramWithSource(context, 1, new String[]{programSource}, null, null);
+        cl_program programFinalScan = clCreateProgramWithSource(context, 1, new String[]{programSourceFinalScan}, null, null);
 
         // Build the program
         clBuildProgram(program, 0, null, null, null, null);
+        clBuildProgram(programFinalScan, 0, null, null, null, null);
 
         // Create the kernel
         cl_kernel kernel = clCreateKernel(program, "prescan", null);
+        cl_kernel kernelFinalScan = clCreateKernel(programFinalScan, "addScannedSums", null);
+
+        // Create input- and output data
+        int numberOfElements = 16;
+        int[] inputDataArray = new int[]{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+        Pointer inputDataPointer = Pointer.to(inputDataArray);
+
+        int outputOfFirstScanArray[] = new int[numberOfElements];
+        Pointer pointerToOutputOfFirstScan = Pointer.to(outputOfFirstScanArray);
+
+        int numberOfWorkgroups = 4;
+        int workgroupSumsArray[] = new int[numberOfWorkgroups];
+        int workgroupSumsScannedArray[] = new int[numberOfWorkgroups];
+
+        Pointer pointerWorkgroupSums = Pointer.to(workgroupSumsArray);
+        Pointer pointerWorkgroupSumsScanned = Pointer.to(workgroupSumsScannedArray);
+
+        int finalScannedArray[] = new int[numberOfElements];
+        Pointer pointerToFinalScannedArray = Pointer.to(finalScannedArray);
 
         long global_work_size[] = new long[]{numberOfElements / 2};//anzahl der threads
-
         long local_work_size[] = new long[]{(numberOfElements / 2) / numberOfWorkgroups};//groß wie die workgroup
 
         // Allocate the memory objects for the input- and output data
@@ -94,7 +102,6 @@ public class ParallelScanMassaros {
         cl_mem memObjectsSumScan[] = new cl_mem[1];
         memObjectsSumScan[0] = clCreateBuffer(context, CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null, null);//scan sums
 
-
         // set kernel arguments 2nd time
         clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(memObjectsInputDataScan[2]));//sums
         clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(memObjectsSumScan[0]));//scanSums
@@ -109,9 +116,27 @@ public class ParallelScanMassaros {
         // Read the output data 2nd time
         clEnqueueReadBuffer(commandQueue, memObjectsSumScan[0], CL_TRUE, 0, numberOfWorkgroups * Sizeof.cl_int, pointerWorkgroupSumsScanned, 0, null, null);
 
-        // Release kernel, program, and memory objects
-        releaseResources(context, commandQueue, memObjectsInputDataScan, memObjectsSumScan, program, kernel);
+        cl_mem memObjectsFinalScan[] = new cl_mem[1];
+        memObjectsFinalScan[0] = clCreateBuffer(context, CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null, null);//first scan result
 
+        // set kernel arguments final scan
+        clSetKernelArg(kernelFinalScan, 0, Sizeof.cl_mem, Pointer.to(memObjectsInputDataScan[1]));
+        clSetKernelArg(kernelFinalScan, 1, Sizeof.cl_mem, Pointer.to(memObjectsSumScan[0]));
+        clSetKernelArg(kernelFinalScan, 2, Sizeof.cl_mem, Pointer.to(memObjectsFinalScan[0]));//we are going to write the results here
+
+        //Execute the kernel final time
+        clEnqueueNDRangeKernel(commandQueue, kernelFinalScan, 1, null, global_work_size, local_work_size, 0, null, null);
+
+        // Read the output data final time
+        clEnqueueReadBuffer(commandQueue, memObjectsFinalScan[0], CL_TRUE, 0, numberOfElements * Sizeof.cl_int, pointerToFinalScannedArray, 0, null, null);
+
+        // Release kernel, program, and memory objects
+        releaseResources(context, commandQueue, memObjectsInputDataScan, memObjectsSumScan, memObjectsFinalScan, program, kernel, programFinalScan, kernelFinalScan);
+
+        printResults(outputOfFirstScanArray, workgroupSumsArray, workgroupSumsScannedArray, finalScannedArray);
+    }
+
+    private static void printResults(int[] outputOfFirstScanArray, int[] workgroupSumsArray, int[] workgroupSumsScannedArray, int[] finalScannedArray) {
         System.out.println("Scan result:");
         for (int i = 0; i < outputOfFirstScanArray.length; i++) {
             System.out.print(outputOfFirstScanArray[i] + " ");
@@ -126,19 +151,33 @@ public class ParallelScanMassaros {
         for (int i = 0; i < workgroupSumsScannedArray.length; i++) {
             System.out.print(workgroupSumsScannedArray[i] + " ");
         }
+
+        System.out.println("\nFinal scanned array:");
+        for (int i = 0; i < finalScannedArray.length; i++) {
+            System.out.print(finalScannedArray[i] + " ");
+        }
     }
 
-    private static void releaseResources(cl_context context, cl_command_queue commandQueue, cl_mem[] memObjectsInputDataScan, cl_mem[] memObjectsSumScan, cl_program program, cl_kernel kernel) {
+    private static void releaseResources(cl_context context, cl_command_queue commandQueue, cl_mem[] memObjectsInputDataScan, cl_mem[] memObjectsSumScan, cl_mem[] memObjectsFinalScan, cl_program program, cl_kernel kernel, cl_program program2, cl_kernel kernel2) {
+        releaseMemoryObjects(memObjectsInputDataScan, memObjectsSumScan, memObjectsFinalScan);
+        clReleaseKernel(kernel);
+        clReleaseKernel(kernel2);
+        clReleaseProgram(program);
+        clReleaseProgram(program2);
+        clReleaseCommandQueue(commandQueue);
+        clReleaseContext(context);
+    }
+
+    private static void releaseMemoryObjects(cl_mem[] memObjectsInputDataScan, cl_mem[] memObjectsSumScan, cl_mem[] memObjectsFinalScan) {
         for (int i = 0; i < memObjectsInputDataScan.length; i++) {
             clReleaseMemObject(memObjectsInputDataScan[i]);
         }
         for (int i = 0; i < memObjectsSumScan.length; i++) {
             clReleaseMemObject(memObjectsSumScan[i]);
         }
-        clReleaseKernel(kernel);
-        clReleaseProgram(program);
-        clReleaseCommandQueue(commandQueue);
-        clReleaseContext(context);
+        for (int i = 0; i < memObjectsFinalScan.length; i++) {
+            clReleaseMemObject(memObjectsFinalScan[i]);
+        }
     }
 
     private static cl_device_id obtainTheDevice(int platformIndex, long deviceType, int deviceIndex, cl_platform_id platform) {

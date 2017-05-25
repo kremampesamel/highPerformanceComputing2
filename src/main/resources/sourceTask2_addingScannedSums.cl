@@ -11,6 +11,7 @@ __kernel void addScannedSums(
     int thid = get_global_id(0);
     int localId = get_local_id(0);
 
-    g_scannedOutputdata[thid] = g_scannedInputData[thid];
+    g_scannedOutputdata[thid] = g_scannedInputData[localId] + scannedSums[localId];
+    g_scannedOutputdata[thid+1] = g_scannedInputData[localId+1] + scannedSums[localId+1];
 
 }

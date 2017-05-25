@@ -2,6 +2,7 @@ package ueb2_scan_temp;
 
 import org.apache.commons.io.FileUtils;
 import org.jocl.*;
+import util.HighPerformanceUtils_Temp;
 
 import java.io.File;
 import java.io.IOException;
@@ -59,13 +60,17 @@ public class ParallelScanMassaros {
 
         // Create input- and output data
         int numberOfElements = 16;
+        int numberOfWorkgroups = 4;
+
+        long global_work_size[] = new long[]{numberOfElements / 2};//anzahl der threads
+        long local_work_size[] = new long[]{(numberOfElements / 2) / numberOfWorkgroups};//groß wie die workgroup
+
         int[] inputDataArray = new int[]{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
         Pointer inputDataPointer = Pointer.to(inputDataArray);
 
         int outputOfFirstScanArray[] = new int[numberOfElements];
         Pointer pointerToOutputOfFirstScan = Pointer.to(outputOfFirstScanArray);
 
-        int numberOfWorkgroups = 4;
         int workgroupSumsArray[] = new int[numberOfWorkgroups];
         int workgroupSumsScannedArray[] = new int[numberOfWorkgroups];
 
@@ -74,9 +79,6 @@ public class ParallelScanMassaros {
 
         int finalScannedArray[] = new int[numberOfElements];
         Pointer pointerToFinalScannedArray = Pointer.to(finalScannedArray);
-
-        long global_work_size[] = new long[]{numberOfElements / 2};//anzahl der threads
-        long local_work_size[] = new long[]{(numberOfElements / 2) / numberOfWorkgroups};//groß wie die workgroup
 
         // Allocate the memory objects for the input- and output data
         cl_mem memObjectsInputDataScan[] = new cl_mem[3];
@@ -210,51 +212,11 @@ public class ParallelScanMassaros {
 
         // print info on platforms
         for (int i = 0; i < numPlatforms; i++) {
-            System.out.println("platform " + i + " name: " + getString(platforms[i], CL_PLATFORM_NAME));
-            System.out.println("platform " + i + " vendor: " + getString(platforms[i], CL_PLATFORM_VENDOR));
-            System.out.println("platform " + i + " version: " + getString(platforms[i], CL_PLATFORM_VERSION));
+            System.out.println("platform " + i + " name: " + HighPerformanceUtils_Temp.getString(platforms[i], CL_PLATFORM_NAME));
+            System.out.println("platform " + i + " vendor: " + HighPerformanceUtils_Temp.getString(platforms[i], CL_PLATFORM_VENDOR));
+            System.out.println("platform " + i + " version: " + HighPerformanceUtils_Temp.getString(platforms[i], CL_PLATFORM_VERSION));
         }
         return platforms;
-    }
-
-    /**
-     * Returns the value of the device info parameter with the given name
-     *
-     * @param device    The device
-     * @param paramName The parameter name
-     * @return The value
-     */
-    private static String getString(cl_device_id device, int paramName) {
-        // Obtain the length of the string that will be queried
-        long size[] = new long[1];
-        clGetDeviceInfo(device, paramName, 0, null, size);
-
-        // Create a buffer of the appropriate size and fill it with the info
-        byte buffer[] = new byte[(int) size[0]];
-        clGetDeviceInfo(device, paramName, buffer.length, Pointer.to(buffer), null);
-
-        // Create a string from the buffer (excluding the trailing \0 byte)
-        return new String(buffer, 0, buffer.length - 1);
-    }
-
-    /**
-     * Returns the value of the platform info parameter with the given name
-     *
-     * @param platform  The platform
-     * @param paramName The parameter name
-     * @return The value
-     */
-    private static String getString(cl_platform_id platform, int paramName) {
-        // Obtain the length of the string that will be queried
-        long size[] = new long[1];
-        clGetPlatformInfo(platform, paramName, 0, null, size);
-
-        // Create a buffer of the appropriate size and fill it with the info
-        byte buffer[] = new byte[(int) size[0]];
-        clGetPlatformInfo(platform, paramName, buffer.length, Pointer.to(buffer), null);
-
-        // Create a string from the buffer (excluding the trailing \0 byte)
-        return new String(buffer, 0, buffer.length - 1);
     }
 
 }

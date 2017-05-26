@@ -5,6 +5,8 @@ import org.jocl.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import static java.nio.charset.Charset.defaultCharset;
 import static org.jocl.CL.*;
@@ -22,6 +24,8 @@ public class JOCLHelper {
     private cl_mem[] cl_mems;
     private cl_program program;
     private cl_kernel kernel;
+    private List<cl_program> programs = new ArrayList<>();
+    private List<cl_kernel> kernels = new ArrayList<>();
 
     public JOCLHelper(int platformIndex, long deviceType, int deviceIndex) {
         this.platformIndex = platformIndex;
@@ -183,6 +187,9 @@ public class JOCLHelper {
 
         program = this.createProgram(codeLines);
         kernel = this.createKernel(sampleKernel, program);
+
+        programs.add(program);
+        kernels.add(kernel);
         return kernel;
     }
 
@@ -201,6 +208,12 @@ public class JOCLHelper {
 
     public void releaseAndFinish() {
         releaseMemObjects(this.cl_mems);
+        for (cl_kernel kernel : this.kernels) {
+            clReleaseKernel(kernel);
+        }
+        for (cl_program program : this.programs) {
+            clReleaseProgram(program);
+        }
         clReleaseCommandQueue(commandQueue);
         clReleaseContext(context);
     }

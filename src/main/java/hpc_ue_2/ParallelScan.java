@@ -50,8 +50,14 @@ public class ParallelScan implements ScanOperation {
         JOCLHelper jocl = new JOCLHelper(platformIndex, deviceType, deviceIndex);
         jocl.init();
 
+        // Create input- and output data
+        int numberOfElements = 1024;//16
+        int numberOfWorkgroups = 32;//4  this seems to work for multiples correlated to number of elements
+
+
         //int srcArrayA[] = randomNumbers(size);
         int srcArrayA[] = new int[]{5, 5, 5, 1, 1, 1, 1, 1};
+        int[] inputDataArray = srcArrayA;
         size = srcArrayA.length;
 
         int destArray[] = new int[size];
@@ -61,23 +67,33 @@ public class ParallelScan implements ScanOperation {
         cl_context context = jocl.createContext();
 
         // Allocate the memory objects for the input- and output data
-        cl_mem memObjects[] = jocl.createManagedMemory(2);
-        memObjects[0] = jocl.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, Sizeof.cl_int * size, srcA);
-        memObjects[1] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * size, null);
+        cl_mem memObjects[] = jocl.createManagedMemory(5);
+        memObjects[0] = jocl.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, Sizeof.cl_int * numberOfElements, srcA);
+        memObjects[1] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);
+        memObjects[2] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);
+        memObjects[3] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);
+        memObjects[4] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);
 
         cl_kernel kernel = jocl.createKernel("prescan", "sourceTask2_prescan.cl");
 
         // Set the arguments for the kernel
-        clSetKernelArg(kernel, 0,
-                Sizeof.cl_mem, Pointer.to(memObjects[0]));
-        clSetKernelArg(kernel, 1,
-                Sizeof.cl_mem, Pointer.to(memObjects[1]));
-        clSetKernelArg(kernel, 2,
-                Sizeof.cl_int, Pointer.to(new int[]{size}));
+        // Set the arguments for the kernel
+        clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(memObjects[0]));
+        clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(memObjects[1]));
+        clSetKernelArg(kernel, 2, Sizeof.cl_int, Pointer.to(new int[]{numberOfElements}));
+        clSetKernelArg(kernel, 3, numberOfElements * Sizeof.cl_int, null);// per workgroup temp memory
+        clSetKernelArg(kernel, 4, Sizeof.cl_mem, Pointer.to(memObjects[2]));
+        clSetKernelArg(kernel, 5, Sizeof.cl_int, Pointer.to(new int[]{1}));//save == 1, later change to boolean
+
+
         // Set the work-item dimensions
         // Set the work-item dimensions
-        long global_work_size[] = new long[]{size};
-        long local_work_size[] = new long[]{1};
+
+        //anzahl der threads
+        long global_work_size[] = new long[]{numberOfElements / 2};
+        //size of workgroup
+        long local_work_size[] = new long[]{(numberOfElements / 2) / numberOfWorkgroups};
+
 
         int work_dim = 1;
 
@@ -87,8 +103,14 @@ public class ParallelScan implements ScanOperation {
         // Read the output data
         long executionTime = System.currentTimeMillis() - start;
         jocl.readIntoBuffer(memObjects[1], CL_TRUE, 0, Sizeof.cl_int * size, dest);
-
         long copyTime = System.currentTimeMillis() - executionTime;
+
+
+        cl_kernel kernelFinalScannel = jocl.createKernel("finalScan", "sourceTask2_finalScan.cl");
+
+        // Read the output data
+
+
         long wholeTime = System.currentTimeMillis() - start;
         // Release kernel, program, and memory objects
         //jocl.releaseKernel(kernel, program);

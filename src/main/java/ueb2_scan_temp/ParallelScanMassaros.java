@@ -1,47 +1,62 @@
 package ueb2_scan_temp;
 
+import hpc_ue_2.ScanOperation;
 import hpc_ue_2.SequentialScan;
-import org.apache.commons.io.FileUtils;
+import hpc_ue_2.Timeable;
 import org.jocl.*;
 import util.JOCLHelper;
 
-import java.io.File;
-import java.util.Random;
 
-import static java.nio.charset.Charset.defaultCharset;
+import java.util.Random;
+import java.util.logging.Logger;
+
 import static org.jocl.CL.*;
 
-public class ParallelScanMassaros {
+public class ParallelScanMassaros implements ScanOperation, Timeable{
 
-    static String programSource = "";
+    private final int numberOfElements;
+    private final int numberOfWorkgroups;
 
-    static String programSourceFinalScan = "";
+    final static Logger logger = Logger.getLogger(ParallelScanMassaros.class.getName());
+    private long wholeTime;
+    private long wholeExecutionTime;
+
+    public ParallelScanMassaros(int numberOfElements, int numberOfWorkgroups) {
+        this.numberOfElements = numberOfElements;
+        this.numberOfWorkgroups = numberOfWorkgroups;
+    }
 
     public static void main(String args[]) throws Exception {
-        // that will be used
-        final int platformIndex = 0;
-        final long deviceType = CL_DEVICE_TYPE_ALL;
-        final int deviceIndex = 0;
-
-        programSource = FileUtils.readFileToString(new File("src/main/resources/sourceTask2_prescan.cl"), defaultCharset());
-        programSourceFinalScan = FileUtils.readFileToString(new File("src/main/resources/sourceTask2_finalScan.cl"), defaultCharset());
-
-        JOCLHelper jocl = new JOCLHelper(platformIndex, deviceType, deviceIndex);
-        JOCLHelper jocl2 = new JOCLHelper(platformIndex, deviceType, deviceIndex);
-        jocl.init();
-        jocl2.init();
 
         // Create input- and output data
         int numberOfElements = 1024;//16
         int numberOfWorkgroups = 32;//4  this seems to work for multiples correlated to number of elements
         int[] inputDataArray = createInputData(numberOfElements);
 
+        ParallelScanMassaros scan = new ParallelScanMassaros(numberOfElements,numberOfWorkgroups);
+        int[] result = scan.executeForNElements(inputDataArray);
+
+        System.out.println(Timeable.printTime(numberOfElements, scan));
+    }
+
+
+
+    @Override
+    public int[] executeForNElements(int[] inputDataArray) {
+        // that will be used
+        final int platformIndex = 0;
+        final long deviceType = CL_DEVICE_TYPE_ALL;
+        final int deviceIndex = 0;
+
+        JOCLHelper jocl = new JOCLHelper(platformIndex, deviceType, deviceIndex);
+        JOCLHelper jocl2 = new JOCLHelper(platformIndex, deviceType, deviceIndex);
+        jocl.init();
+        jocl2.init();
+
         // Enable exceptions and subsequently omit error checks in this sample
         CL.setExceptionsEnabled(true);
 
-
         cl_context context = jocl.createContext();
-
 
         // Create the kernel
         cl_kernel kernel = jocl.createKernel("prescan", "sourceTask2_prescan.cl");
@@ -95,6 +110,8 @@ public class ParallelScanMassaros {
         // Read the output data
         jocl.readIntoBuffer(memObjects[1], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, outputOfFirstScanPointer);
         jocl.readIntoBuffer(memObjects[2], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, workgroupSumsPointer);
+        long secondPrepareTime = System.currentTimeMillis() - executionTime;
+
 
         // set kernel arguments 2nd time
         clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(memObjects[2]));//sums
@@ -104,7 +121,7 @@ public class ParallelScanMassaros {
         clSetKernelArg(kernel, 4, Sizeof.cl_mem, null);//will not be used
         clSetKernelArg(kernel, 5, Sizeof.cl_int, Pointer.to(new int[]{0}));// 0 means we are not saving the sums
 
-        long secondPrepareTime = System.currentTimeMillis() - executionTime;
+
         //Execute the kernel second time
         jocl.executeKernel(kernel, global_work_size, local_work_size, work_dim);
         long secondExecutionTime = System.currentTimeMillis() - secondPrepareTime;
@@ -128,10 +145,19 @@ public class ParallelScanMassaros {
 
         jocl.releaseAndFinish();
 
-        //long wholeTime = System.currentTimeMillis() - start;
+
+         wholeTime = System.currentTimeMillis() - start;
+        wholeExecutionTime = executionTime + secondExecutionTime + finalScanTime;
         // System.out.println(String.format("Scan %s elements in %s ms", 16,  wholeTime));
 
-        verifyAndPrintResults(inputDataArray, outputOfFirstScanArray, workgroupSumsArray, workgroupSumsScannedArray, finalScannedArray);
+        try {
+            verifyAndPrintResults(inputDataArray, outputOfFirstScanArray, workgroupSumsArray, workgroupSumsScannedArray, finalScannedArray);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return finalScannedArray;
+
+
     }
 
     private static int[] createInputData(int numberOfElements) {
@@ -172,6 +198,7 @@ public class ParallelScanMassaros {
         verifyResult(inputData, finalScannedArray);
     }
 
+
     private static void verifyResult(int[] inputDataArray, int[] finalScannedArray) throws Exception {
         long start = System.currentTimeMillis();
         int[] sequentialScanResult = SequentialScan.executeScanForElements(inputDataArray);
@@ -190,5 +217,18 @@ public class ParallelScanMassaros {
         }
     }
 
+    @Override
+    public long getTotalTime() {
+        return wholeTime;
+    }
 
+    @Override
+    public long getOperationTime() {
+        return wholeExecutionTime;
+    }
+
+    @Override
+    public long getMemoryTime() {
+        return wholeTime - wholeExecutionTime;
+    }
 }

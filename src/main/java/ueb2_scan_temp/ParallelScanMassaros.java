@@ -66,6 +66,8 @@ public class ParallelScanMassaros {
         int finalScannedArray[] = new int[numberOfElements];
         Pointer finalScannedArrayPointer = Pointer.to(finalScannedArray);
 
+
+        long start = System.currentTimeMillis();
         // Allocate the memory objects for the input- and output data
         // Allocate the memory objects for the input- and output data
         cl_mem memObjects[] = jocl.createManagedMemory(5);
@@ -85,16 +87,15 @@ public class ParallelScanMassaros {
 
         int work_dim = 1;
         // Execute the kernel
-        long start = System.currentTimeMillis();
+        long prepareTime = System.currentTimeMillis() - start;
         jocl.executeKernel(kernel, global_work_size, local_work_size, work_dim);
 
         // Read the output data
-        long executionTime = System.currentTimeMillis() - start;
+        long executionTime = System.currentTimeMillis() - prepareTime;
 
         // Read the output data
         jocl.readIntoBuffer(memObjects[1], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, outputOfFirstScanPointer);
         jocl.readIntoBuffer(memObjects[1], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, workgroupSumsPointer);
-        long copyTime = System.currentTimeMillis() - executionTime;
 
         // set kernel arguments 2nd time
         clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(memObjects[2]));//sums
@@ -104,11 +105,14 @@ public class ParallelScanMassaros {
         clSetKernelArg(kernel, 4, Sizeof.cl_mem, null);//will not be used
         clSetKernelArg(kernel, 5, Sizeof.cl_int, Pointer.to(new int[]{0}));// 0 means we are not saving the sums
 
+        long secondPrepareTime = System.currentTimeMillis() - executionTime;
         //Execute the kernel second time
         jocl.executeKernel(kernel, global_work_size, local_work_size, work_dim);
+        long secondExecutionTime = System.currentTimeMillis() - secondPrepareTime;
 
         // Read the output data 2nd time
         jocl.readIntoBuffer(memObjects[3], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, workgroupSumsScannedPointer);
+        long secondReadTime = System.currentTimeMillis() - secondExecutionTime;
 
         // set kernel arguments final scan
         clSetKernelArg(kernelFinalScan, 0, Sizeof.cl_mem, Pointer.to(memObjects[1]));
@@ -117,6 +121,8 @@ public class ParallelScanMassaros {
 
         //Execute the kernel final time
         jocl.executeKernel(kernelFinalScan, global_work_size, local_work_size, work_dim);
+
+        long finalScanTime = System.currentTimeMillis() - secondReadTime;
 
         // Read the output data final time
         jocl.readIntoBuffer(memObjects[4], CL_TRUE, 0, Sizeof.cl_int * numberOfElements, finalScannedArrayPointer);
@@ -176,7 +182,7 @@ public class ParallelScanMassaros {
 
         for (int i = 0; i < finalScannedArray.length; i++) {
             if (sequentialScanResult[i] != finalScannedArray[i]) {
-                throw new Exception("did not work correct");
+                throw new Exception("did not work correctly");
             }
         }
         System.out.println("\nSequential scanned array:");

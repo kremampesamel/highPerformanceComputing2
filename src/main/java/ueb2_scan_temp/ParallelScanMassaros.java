@@ -69,13 +69,12 @@ public class ParallelScanMassaros {
 
         long start = System.currentTimeMillis();
         // Allocate the memory objects for the input- and output data
-        // Allocate the memory objects for the input- and output data
         cl_mem memObjects[] = jocl.createManagedMemory(5);
-        memObjects[0] = jocl.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, Sizeof.cl_int * numberOfElements, inputDataPointer);
-        memObjects[1] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);
-        memObjects[2] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);
-        memObjects[3] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);
-        memObjects[4] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);
+        memObjects[0] = jocl.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, Sizeof.cl_int * numberOfElements, inputDataPointer);//input
+        memObjects[1] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);//firstInputScan
+        memObjects[2] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);//sums
+        memObjects[3] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);//scanSums
+        memObjects[4] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);//finalScannedInput
 
         // Set the arguments for the kernel
         clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(memObjects[0]));
@@ -95,7 +94,7 @@ public class ParallelScanMassaros {
 
         // Read the output data
         jocl.readIntoBuffer(memObjects[1], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, outputOfFirstScanPointer);
-        jocl.readIntoBuffer(memObjects[1], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, workgroupSumsPointer);
+        jocl.readIntoBuffer(memObjects[2], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, workgroupSumsPointer);
 
         // set kernel arguments 2nd time
         clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(memObjects[2]));//sums
@@ -177,7 +176,7 @@ public class ParallelScanMassaros {
         long start = System.currentTimeMillis();
         int[] sequentialScanResult = SequentialScan.executeScanForElements(inputDataArray);
         long sequentialTime = System.currentTimeMillis() - start;
-        System.out.println(String.format("\nSequential scan %s elements in %s ms", 16, sequentialTime));
+        System.out.println(String.format("\nSequential scan %s elements in %s ms", inputDataArray.length, sequentialTime));
 
 
         for (int i = 0; i < finalScannedArray.length; i++) {

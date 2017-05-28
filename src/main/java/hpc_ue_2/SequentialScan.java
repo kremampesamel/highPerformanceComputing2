@@ -6,7 +6,7 @@ import java.io.IOException;
 /**
  * Java implementation for comparison
  */
-public class SequentialScan implements ScanOperation , Timeable{
+public class  SequentialScan implements ScanOperation , Timeable{
 
     private long totalTime;
 

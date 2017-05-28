@@ -36,7 +36,9 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
         ParallelScanMassaros scan = new ParallelScanMassaros(numberOfElements,numberOfWorkgroups);
         int[] result = scan.executeForNElements(inputDataArray);
 
-        System.out.println(Timeable.printTime(numberOfElements, scan));
+        String line = Timeable.printTime(numberOfElements, scan);
+        System.out.println(line);
+        System.out.println(line);
     }
 
 
@@ -101,16 +103,16 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
 
         int work_dim = 1;
         // Execute the kernel
-        long prepareTime = System.currentTimeMillis() - start;
+        long prepareTime = timeFromBegin(start);
         jocl.executeKernel(kernel, global_work_size, local_work_size, work_dim);
 
         // Read the output data
-        long executionTime = System.currentTimeMillis() - prepareTime;
+        long executionTime = timeFromBegin(start, prepareTime);
 
         // Read the output data
         jocl.readIntoBuffer(memObjects[1], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, outputOfFirstScanPointer);
         jocl.readIntoBuffer(memObjects[2], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, workgroupSumsPointer);
-        long secondPrepareTime = System.currentTimeMillis() - executionTime;
+        long secondPrepareTime = timeFromBegin(start,executionTime);
 
 
         // set kernel arguments 2nd time
@@ -124,11 +126,11 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
 
         //Execute the kernel second time
         jocl.executeKernel(kernel, global_work_size, local_work_size, work_dim);
-        long secondExecutionTime = System.currentTimeMillis() - secondPrepareTime;
+        long secondExecutionTime = timeFromBegin(start,secondPrepareTime);
 
         // Read the output data 2nd time
         jocl.readIntoBuffer(memObjects[3], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, workgroupSumsScannedPointer);
-        long secondReadTime = System.currentTimeMillis() - secondExecutionTime;
+        long secondReadTime = timeFromBegin(start,secondExecutionTime);
 
         // set kernel arguments final scan
         clSetKernelArg(kernelFinalScan, 0, Sizeof.cl_mem, Pointer.to(memObjects[1]));
@@ -138,7 +140,7 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
         //Execute the kernel final time
         jocl.executeKernel(kernelFinalScan, global_work_size, local_work_size, work_dim);
 
-        long finalScanTime = System.currentTimeMillis() - secondReadTime;
+        long finalScanTime = timeFromBegin(start,secondReadTime);
 
         // Read the output data final time
         jocl.readIntoBuffer(memObjects[4], CL_TRUE, 0, Sizeof.cl_int * numberOfElements, finalScannedArrayPointer);
@@ -158,6 +160,14 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
         return finalScannedArray;
 
 
+    }
+
+    private static long timeFromBegin(long start, long...minus) {
+        long value = System.currentTimeMillis() - start;
+        for (long val: minus) {
+            value -= val;
+        }
+        return value;
     }
 
     private static int[] createInputData(int numberOfElements) {
@@ -202,7 +212,7 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
     private static void verifyResult(int[] inputDataArray, int[] finalScannedArray) throws Exception {
         long start = System.currentTimeMillis();
         int[] sequentialScanResult = SequentialScan.executeScanForElements(inputDataArray);
-        long sequentialTime = System.currentTimeMillis() - start;
+        long sequentialTime = timeFromBegin(start);
         System.out.println(String.format("\nSequential scan %s elements in %s ms", inputDataArray.length, sequentialTime));
 
 

@@ -1,10 +1,5 @@
 package hpc_ue_2;
 
-import ueb2_scan_temp.ParallelScanMassaros;
-
-/**
- * Created by flo on 5/26/17.
- */
 public interface Timeable {
 
 	/**

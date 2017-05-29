@@ -43,7 +43,7 @@ public class JOCLHelper {
     public static String getDeviceString(cl_device_id device, int paramName) {
         // Obtain the length of the string that will be queried
         long size[] = new long[1];
-        clGetDeviceInfo(device, paramName, 0, null, size);
+//        clGetDeviceInfo(device, paramName, 0, null, size);
 
         // Create a buffer of the appropriate size and fill it with the info
         byte buffer[] = new byte[(int) size[0]];

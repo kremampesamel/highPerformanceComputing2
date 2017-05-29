@@ -1,8 +1,5 @@
-package ueb2_scan_temp;
+package hpc_ue_2;
 
-import hpc_ue_2.ScanOperation;
-import hpc_ue_2.SequentialScan;
-import hpc_ue_2.Timeable;
 import org.jocl.*;
 import util.JOCLHelper;
 

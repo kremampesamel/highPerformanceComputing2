@@ -26,7 +26,7 @@ __kernel void radix_merge(__global int *global_data, const int k, const int num_
 	//int tmp [2*bucket_size] = 0;
 	int index_l = left_start;
 	int index_r = right_start;
-	for (int i = 0; i < 2*bucket_size, index_l < right_start, index_r < bound; i++) {
+	for (int i = 0; i < 2*bucket_size; i++) {
 		int elem_l;
 		int elem_r;
 
@@ -58,6 +58,8 @@ __kernel void radix_merge(__global int *global_data, const int k, const int num_
 		}
 		printf("tid=%d tti=%d i=%d siz:%d inl:%d inr:%d val:%d  \n",thid,tmp_index,i,bucket_size,index_l, index_r,tmp[i]);
 	}
+
+	// barrier and sync: barrier(
 	// write
 	for (int i = 0; i < 2*bucket_size, (left_start  + 1) < num_total; i++) {
 		global_data[left_start + i] = tmp[tmp_index + i];

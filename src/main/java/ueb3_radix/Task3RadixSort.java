@@ -141,7 +141,7 @@ public class Task3RadixSort implements Timeable, RadixSort {
 
             // for recap and local_wg, one thread for two buckets
             int global_work_size_int = numBuckets / 2;
-	        int local_work_size_int = Math.max(numBuckets / 16, 4);
+	        int local_work_size_int = 1 ; //Math.max(numBuckets / 16, 4);
 	        long[] global_work_size = new long[]{global_work_size_int};
 	        long[] local_work_size = new long[]{local_work_size_int};
 
@@ -154,6 +154,9 @@ public class Task3RadixSort implements Timeable, RadixSort {
 	        clSetKernelArg(kernelMerge, 4, Sizeof.cl_int, Pointer.to(new int[] {bucketSize}));
 	        clSetKernelArg(kernelMerge, 5, Sizeof.cl_int * tmp_size, null);
 
+	        SampleMerge merge = new SampleMerge(0,0,global_work_size_int, local_work_size_int);
+	        int[] tmp = new int[tmp_size];
+	        merge.radix_merge(finalArray, k, numBuckets,numberOfElements, bucketSize,tmp);
             jocl.executeKernel(kernelMerge, global_work_size, local_work_size, work_dim);
            // clFinish(jocl.getCommandQueue());
             long usedTime = timeFromBegin(start);

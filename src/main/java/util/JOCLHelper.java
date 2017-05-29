@@ -230,13 +230,13 @@ public class JOCLHelper {
     }
 
 
-    public void readIntoBuffer(cl_mem memObject, boolean clTrue, int offset, int size, Pointer dst, int events_wait_list, cl_event o[], cl_event o1) {
+    public void bufferIntoPointer(cl_mem memObject, boolean clTrue, int offset, int size, Pointer dst, int events_wait_list, cl_event o[], cl_event o1) {
         clEnqueueReadBuffer(commandQueue, memObject, clTrue, offset,
                 size, dst, events_wait_list, o, o1);
     }
 
-    public void readIntoBuffer(cl_mem memObject, boolean clTrue, int offset, int size, Pointer dst) {
-        readIntoBuffer(memObject, clTrue, offset,
+    public void bufferIntoPointer(cl_mem memObject, boolean clTrue, int offset, int size, Pointer dst) {
+        bufferIntoPointer(memObject, clTrue, offset,
                 size, dst, 0, null, null);
     }
 

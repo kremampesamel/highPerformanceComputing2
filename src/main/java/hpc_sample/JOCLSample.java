@@ -78,7 +78,7 @@ public class JOCLSample {
         jocl.executeKernel(kernel, global_work_size, local_work_size, 1);
 
         // Read the output data
-        jocl.readIntoBuffer(memObjects[2], CL_TRUE, 0, n * Sizeof.cl_float, dst);
+        jocl.bufferIntoPointer(memObjects[2], CL_TRUE, 0, n * Sizeof.cl_float, dst);
 
         // Release kernel, program, and memory objects
         //jocl.releaseKernel(kernel, program);

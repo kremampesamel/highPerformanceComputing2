@@ -96,7 +96,7 @@ public class ImageRotate {
         jocl.executeKernel(kernel, global_work_size, local_work_size, work_dim);
 
         // Read the output data
-        jocl.readIntoBuffer(memObjects[1], CL_TRUE, 0, Sizeof.cl_int * imageH * imageW, dst);
+        jocl.bufferIntoPointer(memObjects[1], CL_TRUE, 0, Sizeof.cl_int * imageH * imageW, dst);
 
         // Release kernel, program, and memory objects
         //jocl.releaseKernel(kernel, program);

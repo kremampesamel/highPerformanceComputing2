@@ -19,226 +19,262 @@ import static org.jocl.CL.clSetKernelArg;
  */
 public class Task3RadixSort implements Timeable, RadixSort {
 
-    private final int numberOfElements;
-    private final int numberOfWorkgroups;
+	private final int numberOfElements;
+	private final int numberOfWorkgroups;
 
-    final static Logger logger = Logger.getLogger(Task3RadixSort.class.getName());
-    private long wholeTime;
-    private long wholeExecutionTime;
-    private JOCLHelper jocl;
+	final static Logger logger = Logger.getLogger(Task3RadixSort.class.getName());
+	private long wholeTime;
+	private long wholeExecutionTime;
+	private JOCLHelper jocl;
 	private int[] finalArray;
+	private int[] sortedArray;
+	private int[] tmpArray;
+	private Pointer inputDataPointer;
+	private Pointer finalArrayPointer;
+	private Pointer tmpArrayPointer;
+	private Pointer sortedArrayPointer;
 
 	public Task3RadixSort(int numberOfElements, int numberOfWorkgroups) {
-        this.numberOfElements = numberOfElements;
-        this.numberOfWorkgroups = numberOfWorkgroups;
+		this.numberOfElements = numberOfElements;
+		this.numberOfWorkgroups = numberOfWorkgroups;
 
-        this.init();
-    }
+		this.init();
+	}
 
-    private void init() {
-        final int platformIndex = 0;
-        final long deviceType = CL_DEVICE_TYPE_ALL;
-        final int deviceIndex = 0;
+	private void init() {
+		final int platformIndex = 0;
+		final long deviceType = CL_DEVICE_TYPE_ALL;
+		final int deviceIndex = 0;
 
-        jocl = new JOCLHelper(platformIndex, deviceType, deviceIndex);
-        jocl.init();
-        jocl.createContext();
-	    CL.setExceptionsEnabled(true);
+		jocl = new JOCLHelper(platformIndex, deviceType, deviceIndex);
+		jocl.init();
+		jocl.createContext();
+		CL.setExceptionsEnabled(true);
 
-    }
+	}
 
-    public static void main(String args[]) throws Exception {
+	public static void main(String args[]) throws Exception {
 
-        // Create input- and output data
-        int numberOfElements = 1024;//16
-        int numberOfWorkgroups = 32;//4  this seems to work for multiples correlated to number of elements
-        int[] inputDataArray = createInputData(numberOfElements);
+		// Create input- and output data
+		int numberOfElements = 32;//16
+		int numberOfWorkgroups = numberOfElements / 4;
+		int[] inputDataArray = createInputData(numberOfElements);
 
-        Task3RadixSort sort = new Task3RadixSort(numberOfElements, numberOfWorkgroups);
-        int[] result = sort.executeForArray(inputDataArray);
+		Task3RadixSort sort = new Task3RadixSort(numberOfElements, numberOfWorkgroups);
+		int[] result = sort.executeForArray(inputDataArray);
 
-        String line = Timeable.printTime(numberOfElements, sort);
-        System.out.println(line);
-        System.out.println(line);
-    }
-
-
-    @Override
-    public int[] executeForArray(int[] inputDataArray) {
-        // Enable exceptions and subsequently omit error checks in this sample
-        CL.setExceptionsEnabled(true);
-
-        finalArray = new int[numberOfElements];
-
-        Pointer inputDataPointer = Pointer.to(inputDataArray);
-        Pointer finalArrayPointer = Pointer.to(finalArray);
-
-        long start = System.currentTimeMillis();
-
-        // Allocate the memory objects for the input- and output data
-        cl_mem memObjects[] = jocl.createManagedMemory(2);
-        memObjects[0] = jocl.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, Sizeof.cl_int * numberOfElements, inputDataPointer);
-        memObjects[1] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);
-
-        // 1. step: sort all data in arbitrary number of chunks
-        performOneSort(memObjects, inputDataPointer, finalArrayPointer);
-
-        long sortTime = timeFromBegin(start);
-
-        // mock
-	    int numBuckets = (int) Math.pow(2, 8);
-	    int bucketSize = (int) numberOfElements / numBuckets;
-
-        List<Integer> mockList= new ArrayList<>();
-        for (int i = 0; i < numBuckets; i++) {
-
-            List<Integer> sub = new ArrayList<>();
-            for (int j = 0; j < bucketSize;j++) {
-                sub.add((int) ((int) 1 +(Math.random()*40000)));
-            }
-            Collections.sort(sub);
-            mockList.addAll(sub);
-        }
-        for (int i=0; i < finalArray.length && i < mockList.size();i++) {
-            finalArray[i] = mockList.get(i);
-        }
-
-        // Create the kernel
-        cl_kernel kernelMerge = jocl.createKernel("radix_merge", "sourceTask3_radix_merge.cl");
-
-        // 2. step: perform merges of chunks, to retrieve a proper sorted array
-        int n = numberOfElements;
-        // Start with a k = 8;
-        int k = 8;
-
-        iterativeMerge(kernelMerge, memObjects, finalArrayPointer, numberOfElements, k);
-
-        long executionTime = timeFromBegin(start);
-        jocl.releaseAndFinish();
-
-        wholeTime = System.currentTimeMillis() - start;
-        wholeExecutionTime = executionTime;
-
-        try {
-            verifyAndPrintResults(inputDataArray, finalArray);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        return finalArray;
+		String line = Timeable.printTime(numberOfElements, sort);
+		System.out.println(line);
+		System.out.println(line);
+	}
 
 
-    }
+	@Override
+	public int[] executeForArray(int[] inputDataArray) {
+		// Enable exceptions and subsequently omit error checks in this sample
+		CL.setExceptionsEnabled(true);
 
-    private long iterativeMerge(cl_kernel kernelMerge, cl_mem[] memObjects, Pointer finalArrayPointer, int numberOfElements, int k_start) {
-        int work_dim = 1;
+		sortedArray = new int[numberOfElements];
+		tmpArray = new int[numberOfElements];
+		finalArray = new int[numberOfElements];
 
-        long start = System.currentTimeMillis();
+		inputDataPointer = Pointer.to(inputDataArray);
+		sortedArrayPointer = Pointer.to(sortedArray);
+		tmpArrayPointer = Pointer.to(tmpArray);
+		finalArrayPointer = Pointer.to(finalArray);
 
-        // repeat until k == 0!
-        for (int k = k_start; k > 0; k--) {
-            int numBuckets = (int) Math.pow(2, k);
-            int bucketSize = (int) numberOfElements / numBuckets;
+		long start = System.currentTimeMillis();
 
-            // for recap and local_wg, one thread for two buckets
-            int global_work_size_int = numBuckets / 2;
-	        int local_work_size_int = 1 ; //Math.max(numBuckets / 16, 4);
-	        long[] global_work_size = new long[]{global_work_size_int};
-	        long[] local_work_size = new long[]{local_work_size_int};
+		// Allocate the memory objects for the input- and output data
+		cl_mem memObjects[] = jocl.createManagedMemory(4);
+		memObjects[0] = jocl.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, Sizeof.cl_int * numberOfElements, inputDataPointer);
+		memObjects[1] = jocl.createBuffer(CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, Sizeof.cl_int * numberOfElements, sortedArrayPointer);
+		memObjects[2] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);
+		memObjects[3] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);
 
-            int tmp_size = bucketSize * 2 * local_work_size_int;
+		// 1. step: sort all data in arbitrary number of chunks
+		performOneSort(memObjects);
 
-	        clSetKernelArg(kernelMerge, 0, Sizeof.cl_mem, Pointer.to(memObjects[1]));
-	        clSetKernelArg(kernelMerge, 1, Sizeof.cl_int, Pointer.to(new int[] {k}));
-	        clSetKernelArg(kernelMerge, 2, Sizeof.cl_int, Pointer.to(new int[] {numBuckets}));
-	        clSetKernelArg(kernelMerge, 3, Sizeof.cl_int, Pointer.to(new int[] {numberOfElements}));
-	        clSetKernelArg(kernelMerge, 4, Sizeof.cl_int, Pointer.to(new int[] {bucketSize}));
-	        clSetKernelArg(kernelMerge, 5, Sizeof.cl_int * tmp_size, null);
+		long sortTime = timeFromBegin(start);
 
-	        SampleMerge merge = new SampleMerge(0,0,global_work_size_int, local_work_size_int);
-	        int[] tmp = new int[tmp_size];
-	        merge.radix_merge(finalArray, k, numBuckets,numberOfElements, bucketSize,tmp);
-            jocl.executeKernel(kernelMerge, global_work_size, local_work_size, work_dim);
-           // clFinish(jocl.getCommandQueue());
-            long usedTime = timeFromBegin(start);
-            System.out.println(String.format("time: %s",usedTime));
-            // Read the output data 2nd time
-            jocl.readIntoBuffer(memObjects[1], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, finalArrayPointer);
-        }
+		// mock
+		int numBuckets = (int) Math.pow(2, 8);
+		int bucketSize = Math.max(4, (int) numberOfElements / numBuckets);
 
-        long usedTime = timeFromBegin(start);
-        return usedTime;
-    }
+		mockSortedArray(numBuckets, bucketSize);
 
-    private void performOneSort(cl_mem[] memObjects, Pointer inputDataPointer, Pointer finalScannedArrayPointer) {
-        cl_kernel kernelSort = jocl.createKernel("radix_sort8", "sourceTask3_radix_sort.cl");
+		// Create the kernel
+		cl_kernel kernelMerge = jocl.createKernel("radix_merge", "sourceTask3_radix_merge.cl");
 
-        long global_work_size[] = new long[]{numberOfElements / 2};
-        long local_work_size[] = new long[]{(numberOfElements / 2) / numberOfWorkgroups};
+		// 2. step: perform merges of chunks, to retrieve a proper sorted array
+		int n = numberOfElements;
+		// Start with a k = 8;
+		int k = 8;
 
-        // Set the arguments for the kernel
-        clSetKernelArg(kernelSort, 0, Sizeof.cl_mem, Pointer.to(memObjects[0]));
-        //clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(memObjects[1]));
+		iterativeMerge(kernelMerge, memObjects, numberOfElements, k);
 
-        int work_dim = 1;
-        // Execute the kernel
-        jocl.executeKernel(kernelSort, global_work_size, local_work_size, work_dim);
+		long executionTime = timeFromBegin(start);
+		jocl.releaseAndFinish();
 
-        // Read the output data final time
-        jocl.readIntoBuffer(memObjects[1], CL_TRUE, 0, Sizeof.cl_int * numberOfElements, finalScannedArrayPointer);
-    }
+		wholeTime = System.currentTimeMillis() - start;
+		wholeExecutionTime = executionTime;
 
-    private static long timeFromBegin(long start, long... minus) {
-        long value = System.currentTimeMillis() - start;
-        for (long val : minus) {
-            value -= val;
-        }
-        return value;
-    }
+		try {
+			verifyAndPrintResults(inputDataArray, finalArray);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+		return finalArray;
 
-    private static int[] createInputData(int numberOfElements) {
-        int[] inputData = new int[numberOfElements];
-        Random random = new Random();
-        for (int i = 0; i < inputData.length; i++) {
-            inputData[i] = random.nextInt(Integer.MAX_VALUE);
-        }
-        return inputData;
-    }
 
-    private static void verifyAndPrintResults(int[] inputData, int[] resultArray) throws Exception {
-        System.out.println("Input data:");
-        for (int i = 0; i < inputData.length; i++) {
-            System.out.print(inputData[i] + " ");
-        }
+	}
 
-        System.out.println("\nFinal scanned array:");
-        for (int i = 0; i < resultArray.length; i++) {
-            System.out.print(resultArray[i] + " ");
-        }
+	private void mockSortedArray(int numBuckets, int bucketSize) {
+		List<Integer> mockList = new ArrayList<>();
+		for (int i = 0; i < numBuckets; i++) {
 
-        // check
+			List<Integer> sub = new ArrayList<>();
+			for (int j = 0; j < bucketSize; j++) {
+				sub.add((int) ((int) 1 + (Math.random() * 40000)));
+			}
+			Collections.sort(sub);
+			mockList.addAll(sub);
+		}
+		for (int i = 0; i < sortedArray.length && i < mockList.size(); i++) {
+			sortedArray[i] = mockList.get(i);
+		}
+	}
 
-        int current = Integer.MIN_VALUE;
+	private void performOneSort(cl_mem[] memObjects) {
+		cl_kernel kernelSort = jocl.createKernel("radix_sort8", "sourceTask3_radix_sort.cl");
 
-        for (int value : resultArray) {
-            if (value < current) {
-                throw new RuntimeException("That is not a sorted array.");
-            }
-            current = value;
-        }
-    }
+		long global_work_size[] = new long[]{numberOfElements / 2};
+		long local_work_size[] = new long[]{(numberOfElements / 2) / numberOfWorkgroups};
 
-    @Override
-    public long getTotalTime() {
-        return wholeTime;
-    }
+		// Set the arguments for the kernel
+		clSetKernelArg(kernelSort, 0, Sizeof.cl_mem, Pointer.to(memObjects[0]));
+		clSetKernelArg(kernelSort, 1, Sizeof.cl_mem, Pointer.to(memObjects[1]));
 
-    @Override
-    public long getOperationTime() {
-        return wholeExecutionTime;
-    }
+		int work_dim = 1;
+		// Execute the kernel
+		jocl.executeKernel(kernelSort, global_work_size, local_work_size, work_dim);
 
-    @Override
-    public long getMemoryTime() {
-        return wholeTime - wholeExecutionTime;
-    }
+		// Read the output data final time
+		jocl.bufferIntoPointer(memObjects[1], CL_TRUE, 0, Sizeof.cl_int * numberOfElements, sortedArrayPointer);
+	}
+
+	private long iterativeMerge(cl_kernel kernelMerge, cl_mem[] memObjects, int numberOfElements, int k_start) {
+		int work_dim = 1;
+
+		int size = Sizeof.cl_int * numberOfElements;
+		long start = System.currentTimeMillis();
+
+		// repeat until k == 0!
+		for (int k = k_start; k > 0; k--) {
+			int numBuckets = (int) Math.pow(2, k);
+			int bucketSize = Math.max(4, (int) numberOfElements / numBuckets);
+
+			// for recap and local_wg, one thread for two buckets
+			int global_work_size_int = numBuckets / 2;
+			int local_work_size_int = 1; //Math.max(numBuckets / 16, 4);
+			long[] global_work_size = new long[]{global_work_size_int};
+			long[] local_work_size = new long[]{local_work_size_int};
+
+			// sorted array
+			clSetKernelArg(kernelMerge, 0, Sizeof.cl_mem, Pointer.to(memObjects[1]));
+			// tmp array
+			clSetKernelArg(kernelMerge, 1, Sizeof.cl_mem, Pointer.to(memObjects[2]));
+			clSetKernelArg(kernelMerge, 2, Sizeof.cl_int, Pointer.to(new int[]{k}));
+			clSetKernelArg(kernelMerge, 3, Sizeof.cl_int, Pointer.to(new int[]{numBuckets}));
+			clSetKernelArg(kernelMerge, 4, Sizeof.cl_int, Pointer.to(new int[]{numberOfElements}));
+			clSetKernelArg(kernelMerge, 5, Sizeof.cl_int, Pointer.to(new int[]{bucketSize}));
+
+			SampleMerge merge = new SampleMerge(0, 0, global_work_size_int, local_work_size_int);
+			//merge.radix_merge(finalArray, k, numBuckets,numberOfElements, bucketSize,tmp);
+
+			pointerIntoBuffer(memObjects[1], size, sortedArrayPointer);
+			pointerIntoBuffer(memObjects[2], size, tmpArrayPointer);
+			jocl.bufferIntoPointer(memObjects[1], CL_TRUE, 0, size, sortedArrayPointer);
+			jocl.bufferIntoPointer(memObjects[2], CL_TRUE, 0, size, tmpArrayPointer);
+			jocl.executeKernel(kernelMerge, global_work_size, local_work_size, work_dim);
+
+			// Read the output data 2nd time
+			//jocl.bufferIntoPointer(memObjects[1], CL_TRUE, 0, size, sortedArrayPointer);
+			jocl.bufferIntoPointer(memObjects[2], CL_TRUE, 0, size, tmpArrayPointer);
+
+//			clEnqueueWriteBuffer(jocl.getCommandQueue(), memObjects[1], true, 0, size, tmpArrayPointer, 0, null, null);
+
+			// write buffer 2 to 1 back again, store tmp in sorted
+			clEnqueueCopyBuffer(jocl.getCommandQueue(), memObjects[2], memObjects[1], 0, 0, size, 0, null, null);
+			jocl.bufferIntoPointer(memObjects[2], CL_TRUE, 0, size, sortedArrayPointer);
+
+			long usedTime = timeFromBegin(start);
+			System.out.println(String.format("time: %s", usedTime));
+		}
+		jocl.bufferIntoPointer(memObjects[2], CL_TRUE, 0, size, tmpArrayPointer);
+		jocl.bufferIntoPointer(memObjects[2], CL_TRUE, 0, size, finalArrayPointer);
+
+
+		long usedTime = timeFromBegin(start);
+		return usedTime;
+	}
+
+	private void pointerIntoBuffer(cl_mem memObject, int size, Pointer pointer) {
+		clEnqueueWriteBuffer(jocl.getCommandQueue(), memObject, true, 0, size, pointer, 0, null, null);
+	}
+
+	private static long timeFromBegin(long start, long... minus) {
+		long value = System.currentTimeMillis() - start;
+		for (long val : minus) {
+			value -= val;
+		}
+		return value;
+	}
+
+	private static int[] createInputData(int numberOfElements) {
+		int[] inputData = new int[numberOfElements];
+		Random random = new Random();
+		for (int i = 0; i < inputData.length; i++) {
+			inputData[i] = random.nextInt(Integer.MAX_VALUE);
+		}
+		return inputData;
+	}
+
+	private static void verifyAndPrintResults(int[] inputData, int[] resultArray) throws Exception {
+		System.out.println("Input data:");
+		for (int i = 0; i < inputData.length; i++) {
+			System.out.print(inputData[i] + " ");
+		}
+
+		System.out.println("\nFinal scanned array:");
+		for (int i = 0; i < resultArray.length; i++) {
+			System.out.print(resultArray[i] + " ");
+		}
+
+		// check
+
+		int current = Integer.MIN_VALUE;
+
+		for (int value : resultArray) {
+			if (value < current) {
+				throw new RuntimeException("That is not a sorted array.");
+			}
+			current = value;
+		}
+	}
+
+	@Override
+	public long getTotalTime() {
+		return wholeTime;
+	}
+
+	@Override
+	public long getOperationTime() {
+		return wholeExecutionTime;
+	}
+
+	@Override
+	public long getMemoryTime() {
+		return wholeTime - wholeExecutionTime;
+	}
 }

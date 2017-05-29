@@ -1,4 +1,7 @@
-__kernel void radix_sort8(__global int *global_data) {
+__kernel void radix_sort8(
+	__global const int *global_data,
+	__global int* out
+	) {
     typedef union {
         int vec;
         int array[8];
@@ -27,5 +30,6 @@ __kernel void radix_sort8(__global int *global_data) {
         //data.vec = shuffle2(data.vec, ones.vec, mask.vec);
         cmp_value <<= 1;
     }
-    global_data[0] = data.vec;
+    //global_data[0] = data.vec;
+    out[0] = 42;
 }

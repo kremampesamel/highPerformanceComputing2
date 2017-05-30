@@ -14,7 +14,6 @@ public class OpenCLScan implements ScanOperation, Timeable {
     private final int numberOfElements;
     private final int numberOfWorkgroups;
 
-    final static Logger logger = Logger.getLogger(OpenCLScan.class.getName());
     private long wholeTime;
     private long wholeExecutionTime;
 
@@ -28,6 +27,8 @@ public class OpenCLScan implements ScanOperation, Timeable {
         // Create input- and output data
         int numberOfElements = 1024;//16
         int numberOfWorkgroups = 32;//4  this seems to work for multiples correlated to number of elements
+
+        //TODO: fill with 0 to create full size if not power of 2
         int[] inputDataArray = createInputData(numberOfElements); // {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
         OpenCLScan scan = new OpenCLScan(numberOfElements, numberOfWorkgroups);
@@ -41,17 +42,16 @@ public class OpenCLScan implements ScanOperation, Timeable {
 
     @Override
     public int[] executeForNElements(int[] inputDataArray) {
+        // Enable exceptions and subsequently omit error checks in this sample
+        CL.setExceptionsEnabled(true);
+
         // that will be used
         final int platformIndex = 0;
         final long deviceType = CL_DEVICE_TYPE_ALL;
         final int deviceIndex = 0;
 
         JOCLHelper jocl = new JOCLHelper(platformIndex, deviceType, deviceIndex);
-        JOCLHelper jocl2 = new JOCLHelper(platformIndex, deviceType, deviceIndex);
         jocl.init();
-
-        // Enable exceptions and subsequently omit error checks in this sample
-        CL.setExceptionsEnabled(true);
 
         cl_context context = jocl.createContext();
 
@@ -187,6 +187,10 @@ public class OpenCLScan implements ScanOperation, Timeable {
 //        for (int i = 0; i < workgroupSumsArray.length; i++) {
 //            System.out.print(workgroupSumsArray[i] + " ");
 //        }
+//
+        //zwischensummen pro workgroup
+//
+//        dann wieder rückgängig
 //
 //        System.out.println("\n\nSum workgroup scan result:");
 //        for (int i = 0; i < workgroupSumsScannedArray.length; i++) {

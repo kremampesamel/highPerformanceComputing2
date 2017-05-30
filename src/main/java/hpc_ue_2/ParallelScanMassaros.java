@@ -33,8 +33,8 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
         ParallelScanMassaros scan = new ParallelScanMassaros(numberOfElements,numberOfWorkgroups);
         int[] result = scan.executeForNElements(inputDataArray);
 
+        System.out.println("OpenCL execution information: ");
         String line = Timeable.printTime(numberOfElements, scan);
-        System.out.println(line);
         System.out.println(line);
     }
 
@@ -177,27 +177,27 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
     }
 
     private static void verifyAndPrintResults(int[] inputData, int[] outputOfFirstScanArray, int[] workgroupSumsArray, int[] workgroupSumsScannedArray, int[] finalScannedArray) throws Exception {
-        System.out.println("Input data:");
+        System.out.println("\nInput data:");
         for (int i = 0; i < inputData.length; i++) {
             System.out.print(inputData[i] + " ");
         }
 
-        System.out.println("Scan result:");
-        for (int i = 0; i < outputOfFirstScanArray.length; i++) {
-            System.out.print(outputOfFirstScanArray[i] + " ");
-        }
+//        System.out.println("Scan result:");
+//        for (int i = 0; i < outputOfFirstScanArray.length; i++) {
+//            System.out.print(outputOfFirstScanArray[i] + " ");
+//        }
 
-        System.out.println("\nSum result:");
-        for (int i = 0; i < workgroupSumsArray.length; i++) {
-            System.out.print(workgroupSumsArray[i] + " ");
-        }
+//        System.out.println("\n\nSum result:");
+//        for (int i = 0; i < workgroupSumsArray.length; i++) {
+//            System.out.print(workgroupSumsArray[i] + " ");
+//        }
+//
+//        System.out.println("\n\nSum workgroup scan result:");
+//        for (int i = 0; i < workgroupSumsScannedArray.length; i++) {
+//            System.out.print(workgroupSumsScannedArray[i] + " ");
+//        }
 
-        System.out.println("\nSum workgroup scan result:");
-        for (int i = 0; i < workgroupSumsScannedArray.length; i++) {
-            System.out.print(workgroupSumsScannedArray[i] + " ");
-        }
-
-        System.out.println("\nFinal scanned array:");
+        System.out.println("\n\nFinal scanned array:");
         for (int i = 0; i < finalScannedArray.length; i++) {
             System.out.print(finalScannedArray[i] + " ");
         }
@@ -210,7 +210,6 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
         long start = System.currentTimeMillis();
         int[] sequentialScanResult = SequentialScan.executeScanForElements(inputDataArray);
         long sequentialTime = timeFromBegin(start);
-        System.out.println(String.format("\nSequential scan %s elements in %s ms", inputDataArray.length, sequentialTime));
 
 
         for (int i = 0; i < finalScannedArray.length; i++) {
@@ -218,10 +217,12 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
                 throw new Exception("did not work correctly");
             }
         }
-        System.out.println("\nSequential scanned array:");
+        System.out.println("\n\nSequential execution array:");
         for (int i = 0; i < sequentialScanResult.length; i++) {
             System.out.print(sequentialScanResult[i] + " ");
         }
+
+        System.out.println(String.format("\n\nSequential execution information:\nScanned elements: n=%s total:%s ms\n", inputDataArray.length, sequentialTime));
     }
 
     @Override

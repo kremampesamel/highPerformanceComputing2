@@ -9,16 +9,16 @@ import java.util.logging.Logger;
 
 import static org.jocl.CL.*;
 
-public class ParallelScanMassaros implements ScanOperation, Timeable{
+public class OpenCLScan implements ScanOperation, Timeable {
 
     private final int numberOfElements;
     private final int numberOfWorkgroups;
 
-    final static Logger logger = Logger.getLogger(ParallelScanMassaros.class.getName());
+    final static Logger logger = Logger.getLogger(OpenCLScan.class.getName());
     private long wholeTime;
     private long wholeExecutionTime;
 
-    public ParallelScanMassaros(int numberOfElements, int numberOfWorkgroups) {
+    public OpenCLScan(int numberOfElements, int numberOfWorkgroups) {
         this.numberOfElements = numberOfElements;
         this.numberOfWorkgroups = numberOfWorkgroups;
     }
@@ -28,16 +28,15 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
         // Create input- and output data
         int numberOfElements = 1024;//16
         int numberOfWorkgroups = 32;//4  this seems to work for multiples correlated to number of elements
-        int[] inputDataArray = createInputData(numberOfElements);
+        int[] inputDataArray = createInputData(numberOfElements); // {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
-        ParallelScanMassaros scan = new ParallelScanMassaros(numberOfElements,numberOfWorkgroups);
+        OpenCLScan scan = new OpenCLScan(numberOfElements, numberOfWorkgroups);
         int[] result = scan.executeForNElements(inputDataArray);
 
         System.out.println("OpenCL execution information: ");
         String line = Timeable.printTime(numberOfElements, scan);
         System.out.println(line);
     }
-
 
 
     @Override
@@ -109,7 +108,7 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
         // Read the output data
         jocl.bufferIntoPointer(memObjects[1], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, outputOfFirstScanPointer);
         jocl.bufferIntoPointer(memObjects[2], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, workgroupSumsPointer);
-        long secondPrepareTime = timeFromBegin(start,executionTime);
+        long secondPrepareTime = timeFromBegin(start, executionTime);
 
 
         // set kernel arguments 2nd time
@@ -120,14 +119,13 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
         clSetKernelArg(kernel, 4, Sizeof.cl_mem, null);//will not be used
         clSetKernelArg(kernel, 5, Sizeof.cl_int, Pointer.to(new int[]{0}));// 0 means we are not saving the sums
 
-
         //Execute the kernel second time
         jocl.executeKernel(kernel, global_work_size, local_work_size, work_dim);
-        long secondExecutionTime = timeFromBegin(start,secondPrepareTime);
+        long secondExecutionTime = timeFromBegin(start, secondPrepareTime);
 
         // Read the output data 2nd time
         jocl.bufferIntoPointer(memObjects[3], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, workgroupSumsScannedPointer);
-        long secondReadTime = timeFromBegin(start,secondExecutionTime);
+        long secondReadTime = timeFromBegin(start, secondExecutionTime);
 
         // set kernel arguments final scan
         clSetKernelArg(kernelFinalScan, 0, Sizeof.cl_mem, Pointer.to(memObjects[1]));
@@ -137,15 +135,14 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
         //Execute the kernel final time
         jocl.executeKernel(kernelFinalScan, global_work_size, local_work_size, work_dim);
 
-        long finalScanTime = timeFromBegin(start,secondReadTime);
+        long finalScanTime = timeFromBegin(start, secondReadTime);
 
         // Read the output data final time
         jocl.bufferIntoPointer(memObjects[4], CL_TRUE, 0, Sizeof.cl_int * numberOfElements, finalScannedArrayPointer);
 
         jocl.releaseAndFinish();
 
-
-         wholeTime = System.currentTimeMillis() - start;
+        wholeTime = System.currentTimeMillis() - start;
         wholeExecutionTime = executionTime + secondExecutionTime + finalScanTime;
         // System.out.println(String.format("Scan %s elements in %s ms", 16,  wholeTime));
 
@@ -159,9 +156,9 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
 
     }
 
-    private static long timeFromBegin(long start, long...minus) {
+    private static long timeFromBegin(long start, long... minus) {
         long value = System.currentTimeMillis() - start;
-        for (long val: minus) {
+        for (long val : minus) {
             value -= val;
         }
         return value;
@@ -186,7 +183,7 @@ public class ParallelScanMassaros implements ScanOperation, Timeable{
 //        for (int i = 0; i < outputOfFirstScanArray.length; i++) {
 //            System.out.print(outputOfFirstScanArray[i] + " ");
 //        }
-
+//
 //        System.out.println("\n\nSum result:");
 //        for (int i = 0; i < workgroupSumsArray.length; i++) {
 //            System.out.print(workgroupSumsArray[i] + " ");

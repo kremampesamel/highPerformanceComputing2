@@ -23,7 +23,9 @@ public class Task1ImageRotate {
     public static void main(String args[]) throws IOException {
         float rotation = 30.0f;
 
+        // Enable exceptions and subsequently omit error checks in this sample
         CL.setExceptionsEnabled(true);
+
         programSource = FileUtils.readFileToString(new File("src/main/resources/sourceTask1.cl"), defaultCharset());
 
         inputImage = ImageIO.read(new File("lena512color.png"));
@@ -44,8 +46,6 @@ public class Task1ImageRotate {
         final long deviceType = CL_DEVICE_TYPE_ALL;
         final int deviceIndex = 0;
 
-        // Enable exceptions and subsequently omit error checks in this sample
-        CL.setExceptionsEnabled(true);
 
         // Obtain the platforms
         int numPlatformsArray[] = new int[1];

@@ -49,7 +49,6 @@ public class OpenCLScan implements ScanOperation, Timeable {
         JOCLHelper jocl = new JOCLHelper(platformIndex, deviceType, deviceIndex);
         JOCLHelper jocl2 = new JOCLHelper(platformIndex, deviceType, deviceIndex);
         jocl.init();
-        jocl2.init();
 
         // Enable exceptions and subsequently omit error checks in this sample
         CL.setExceptionsEnabled(true);

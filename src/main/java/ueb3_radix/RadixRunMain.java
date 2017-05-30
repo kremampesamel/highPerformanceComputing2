@@ -8,9 +8,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.StringJoiner;
 
-/**
- * Created by flo on 5/30/17.
- */
 public class RadixRunMain {
 
 	public static final int MAX_DISPLAY = 10240;

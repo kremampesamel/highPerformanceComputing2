@@ -1,8 +1,5 @@
 package ueb3_radix;
 
-/**
- * Created by Flo on 29.05.2017.
- */
 public class SampleMerge {
 
 	public int global_id = 0;

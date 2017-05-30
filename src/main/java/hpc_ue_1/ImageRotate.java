@@ -33,7 +33,7 @@ public class ImageRotate {
      *
      * @param args Not used
      */
-    public static void main(String args[]) {
+  /*  public static void main(String args[]) {
 
         // The platform, device type and device number
         // that will be used
@@ -114,4 +114,5 @@ public class ImageRotate {
             e.printStackTrace();
         }
     }
+    */
 }

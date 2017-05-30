@@ -22,11 +22,11 @@ public class RadixRunMain {
 
 	private static void createStats(int k) {
 
-		int startSize = 1048576*4;
+		int startSize = 1024 * 124 * 4;
 		int size = startSize;
 
 		int setSize = 10;
-		log("Run statistics for "+size+"*2^"+setSize+" with k="+k);
+		log("Run statistics for " + size + "*2^" + setSize + " with k=" + k);
 
 		List<String> lines = new ArrayList<>();
 		for (int i = 0; i < setSize; i++) {
@@ -34,11 +34,16 @@ public class RadixRunMain {
 			int[] testSet = createInputData(size);
 			Task3RadixSort sort = new Task3RadixSort();
 
-			log("Run Test i="+i+"for " + size + " elements");
+
+			if (lines.size() > 0) {
+				String lastLine = lines.get(lines.size()-1);
+				log("Last Test i=" + (lines.size()-1) + " for "+lastLine);
+			}
+			log("Run Test i=" + i + " for " + size + " elements");
 
 			try {
 				int[] result = sort.executeForArray(testSet, k);
-				verifyAndPrintResults(testSet,result);
+				verifyAndPrintResults(testSet, result);
 				String line = Timeable.printTimeCSV(size, sort);
 				lines.add(line);
 			} catch (Exception e) {

@@ -1,6 +1,7 @@
 package ueb3_radix;
 
 import hpc_ue_2.Timeable;
+import jdk.nashorn.internal.runtime.ECMAException;
 import org.jocl.*;
 import util.JOCLHelper;
 
@@ -22,6 +23,7 @@ public class Task3RadixSort implements Timeable, RadixSort {
 	private final int numberOfElements;
 	private final int numberOfWorkgroups;
 
+	public static final int MAX_DISPLAY= 10240;
 	final static Logger logger = Logger.getLogger(Task3RadixSort.class.getName());
 	private long wholeTime;
 	private long wholeExecutionTime;
@@ -56,7 +58,7 @@ public class Task3RadixSort implements Timeable, RadixSort {
 	public static void main(String args[]) throws Exception {
 
 		// Create input- and output data
-		int numberOfElements = 32;//16
+		int numberOfElements = 10240000;//16
 		int numberOfWorkgroups = numberOfElements / 4;
 		int[] inputDataArray = createInputData(numberOfElements);
 
@@ -86,16 +88,13 @@ public class Task3RadixSort implements Timeable, RadixSort {
 		long start = System.currentTimeMillis();
 
 		// Allocate the memory objects for the input- and output data
-		cl_mem memObjects[] = jocl.createManagedMemory(4);
+		cl_mem memObjects[] = jocl.createManagedMemory(3);
 		memObjects[0] = jocl.createBuffer(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, Sizeof.cl_int * numberOfElements, inputDataPointer);
 		memObjects[1] = jocl.createBuffer(CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, Sizeof.cl_int * numberOfElements, sortedArrayPointer);
 		memObjects[2] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);
-		memObjects[3] = jocl.createBuffer(CL_MEM_READ_WRITE, Sizeof.cl_int * numberOfElements, null);
 
 		// 1. step: sort all data in arbitrary number of chunks
 		performOneSort(memObjects);
-
-		long sortTime = timeFromBegin(start);
 
 		// mock
 		int numBuckets = (int) Math.pow(2, 8);
@@ -108,13 +107,17 @@ public class Task3RadixSort implements Timeable, RadixSort {
 
 		// 2. step: perform merges of chunks, to retrieve a proper sorted array
 		int n = numberOfElements;
-		// Start with a k = 8;
-		int k = 8;
 
-		iterativeMerge(kernelMerge, memObjects, numberOfElements, k);
+		// Start with a k = 8;
+		iterativeMerge(kernelMerge, memObjects, numberOfElements, 8);
 
 		long executionTime = timeFromBegin(start);
-		jocl.releaseAndFinish();
+
+		try {
+			jocl.releaseAndFinish();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
 		wholeTime = System.currentTimeMillis() - start;
 		wholeExecutionTime = executionTime;
@@ -125,24 +128,6 @@ public class Task3RadixSort implements Timeable, RadixSort {
 			throw new RuntimeException(e);
 		}
 		return finalArray;
-
-
-	}
-
-	private void mockSortedArray(int numBuckets, int bucketSize) {
-		List<Integer> mockList = new ArrayList<>();
-		for (int i = 0; i < numBuckets; i++) {
-
-			List<Integer> sub = new ArrayList<>();
-			for (int j = 0; j < bucketSize; j++) {
-				sub.add((int) ((int) 1 + (Math.random() * 40000)));
-			}
-			Collections.sort(sub);
-			mockList.addAll(sub);
-		}
-		for (int i = 0; i < sortedArray.length && i < mockList.size(); i++) {
-			sortedArray[i] = mockList.get(i);
-		}
 	}
 
 	private void performOneSort(cl_mem[] memObjects) {
@@ -164,15 +149,15 @@ public class Task3RadixSort implements Timeable, RadixSort {
 	}
 
 	private long iterativeMerge(cl_kernel kernelMerge, cl_mem[] memObjects, int numberOfElements, int k_start) {
-		int work_dim = 1;
 
-		int size = Sizeof.cl_int * numberOfElements;
 		long start = System.currentTimeMillis();
+		int work_dim = 1;
+		int size = Sizeof.cl_int * numberOfElements;
 
 		// repeat until k == 0!
 		for (int k = k_start; k > 0; k--) {
 			int numBuckets = (int) Math.pow(2, k);
-			int bucketSize = Math.max(4, (int) numberOfElements / numBuckets);
+			int bucketSize = Math.max(Math.min(4, numberOfElements), (int) numberOfElements / numBuckets);
 
 			// for recap and local_wg, one thread for two buckets
 			int global_work_size_int = numBuckets / 2;
@@ -184,38 +169,35 @@ public class Task3RadixSort implements Timeable, RadixSort {
 			clSetKernelArg(kernelMerge, 0, Sizeof.cl_mem, Pointer.to(memObjects[1]));
 			// tmp array
 			clSetKernelArg(kernelMerge, 1, Sizeof.cl_mem, Pointer.to(memObjects[2]));
-			clSetKernelArg(kernelMerge, 2, Sizeof.cl_int, Pointer.to(new int[]{k}));
-			clSetKernelArg(kernelMerge, 3, Sizeof.cl_int, Pointer.to(new int[]{numBuckets}));
-			clSetKernelArg(kernelMerge, 4, Sizeof.cl_int, Pointer.to(new int[]{numberOfElements}));
-			clSetKernelArg(kernelMerge, 5, Sizeof.cl_int, Pointer.to(new int[]{bucketSize}));
+			clSetKernelArg(kernelMerge, 2, Sizeof.cl_int, Pointer.to(new int[]{numberOfElements}));
+			clSetKernelArg(kernelMerge, 3, Sizeof.cl_int, Pointer.to(new int[]{bucketSize}));
 
-			SampleMerge merge = new SampleMerge(0, 0, global_work_size_int, local_work_size_int);
+			//SampleMerge merge = new SampleMerge(0, 0, global_work_size_int, local_work_size_int);
 			//merge.radix_merge(finalArray, k, numBuckets,numberOfElements, bucketSize,tmp);
 
 			pointerIntoBuffer(memObjects[1], size, sortedArrayPointer);
 			pointerIntoBuffer(memObjects[2], size, tmpArrayPointer);
-			jocl.bufferIntoPointer(memObjects[1], CL_TRUE, 0, size, sortedArrayPointer);
-			jocl.bufferIntoPointer(memObjects[2], CL_TRUE, 0, size, tmpArrayPointer);
+			//jocl.bufferIntoPointer(memObjects[1], CL_TRUE, 0, size, sortedArrayPointer);
+			//jocl.bufferIntoPointer(memObjects[2], CL_TRUE, 0, size, tmpArrayPointer);
 			jocl.executeKernel(kernelMerge, global_work_size, local_work_size, work_dim);
 
 			// Read the output data 2nd time
-			//jocl.bufferIntoPointer(memObjects[1], CL_TRUE, 0, size, sortedArrayPointer);
 			jocl.bufferIntoPointer(memObjects[2], CL_TRUE, 0, size, tmpArrayPointer);
 
-//			clEnqueueWriteBuffer(jocl.getCommandQueue(), memObjects[1], true, 0, size, tmpArrayPointer, 0, null, null);
-
 			// write buffer 2 to 1 back again, store tmp in sorted
+			// CAUTION: i tried to remove something, then it was broken. be aware..
 			clEnqueueCopyBuffer(jocl.getCommandQueue(), memObjects[2], memObjects[1], 0, 0, size, 0, null, null);
 			jocl.bufferIntoPointer(memObjects[2], CL_TRUE, 0, size, sortedArrayPointer);
 
 			long usedTime = timeFromBegin(start);
-			System.out.println(String.format("time: %s", usedTime));
+			System.out.println(String.format("time: %s ms", usedTime));
 		}
 		jocl.bufferIntoPointer(memObjects[2], CL_TRUE, 0, size, tmpArrayPointer);
 		jocl.bufferIntoPointer(memObjects[2], CL_TRUE, 0, size, finalArrayPointer);
 
 
 		long usedTime = timeFromBegin(start);
+		System.out.println(String.format("total time: %s ms", usedTime));
 		return usedTime;
 	}
 
@@ -231,6 +213,22 @@ public class Task3RadixSort implements Timeable, RadixSort {
 		return value;
 	}
 
+	private void mockSortedArray(int numBuckets, int bucketSize) {
+		List<Integer> mockList = new ArrayList<>();
+		for (int i = 0; i < numBuckets; i++) {
+
+			List<Integer> sub = new ArrayList<>();
+			for (int j = 0; j < bucketSize; j++) {
+				sub.add((int) ((int) 1 + (Math.random() * 40000)));
+			}
+			Collections.sort(sub);
+			mockList.addAll(sub);
+		}
+		for (int i = 0; i < sortedArray.length && i < mockList.size(); i++) {
+			sortedArray[i] = mockList.get(i);
+		}
+	}
+
 	private static int[] createInputData(int numberOfElements) {
 		int[] inputData = new int[numberOfElements];
 		Random random = new Random();
@@ -242,16 +240,17 @@ public class Task3RadixSort implements Timeable, RadixSort {
 
 	private static void verifyAndPrintResults(int[] inputData, int[] resultArray) throws Exception {
 		System.out.println("Input data:");
-		for (int i = 0; i < inputData.length; i++) {
-			System.out.print(inputData[i] + " ");
-		}
 
-		System.out.println("\nFinal scanned array:");
-		for (int i = 0; i < resultArray.length; i++) {
-			System.out.print(resultArray[i] + " ");
-		}
+		if (resultArray.length < MAX_DISPLAY) {
+			for (int i = 0; i < inputData.length; i++) {
+				System.out.print(inputData[i] + " ");
+			}
 
-		// check
+			System.out.println("\nFinal scanned array:");
+			for (int i = 0; i < resultArray.length; i++) {
+				System.out.print(resultArray[i] + " ");
+			}
+		}
 
 		int current = Integer.MIN_VALUE;
 
@@ -261,6 +260,7 @@ public class Task3RadixSort implements Timeable, RadixSort {
 			}
 			current = value;
 		}
+		System.out.print("Array is sorted correctly");
 	}
 
 	@Override

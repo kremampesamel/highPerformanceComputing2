@@ -21,6 +21,8 @@ public class Task1ImageRotate {
     static String programSource = "";
 
     public static void main(String args[]) throws IOException {
+        float rotation = 30.0f;
+
         CL.setExceptionsEnabled(true);
         programSource = FileUtils.readFileToString(new File("src/main/resources/sourceTask1.cl"), defaultCharset());
 
@@ -119,8 +121,6 @@ public class Task1ImageRotate {
 
         clSetKernelArg(kernel, 3,
                 Sizeof.cl_int, Pointer.to(new int[]{inputImage.getHeight()}));
-
-        float rotation = -10.0f;
 
         clSetKernelArg(kernel, 4,
                 Sizeof.cl_float, Pointer.to(new float[]{(float) Math.sin(Math.toRadians(rotation))}));

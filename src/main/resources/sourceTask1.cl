@@ -1,10 +1,8 @@
 __kernel void image_rotate(
-__global int *src_data, __global int *dest_data,
-int W, int H,
-float sinTheta, float cosTheta )
+__global int *src_data, __global int *dest_data, int W, int H, float sinTheta, float cosTheta )
 {
-//Thread gets its index within index space
- float x0 = W/2;
+  //Thread gets its index within index space
+  float x0 = W/2;
   float y0 = H/2;
   int x1 = get_global_id(0);
   int y1 = get_global_id(1);

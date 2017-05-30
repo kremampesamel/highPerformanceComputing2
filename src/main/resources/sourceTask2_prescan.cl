@@ -11,7 +11,7 @@ __kernel void prescan(
 
     for (int d = numberOfElements>>1; d > 0; d >>= 1)   // build sum in place up the tree
     {
-        barrier(CLK_LOCAL_MEM_FENCE); //CLK_LOCAL_MEM_FENCE CLK_GLOBAL_MEM_FENCE
+        barrier(CLK_LOCAL_MEM_FENCE);
         if (localId < d)
         {
             int ai = offset*(2*localId+1)-1;
@@ -45,8 +45,7 @@ __kernel void prescan(
     }
     barrier(CLK_LOCAL_MEM_FENCE);
 
-    // wieder thid, weil das element localmemory 0 will ich wieder
-    //an global stelle 500.000
+    // wieder thid, weil das element localmemory 0 will ich wieder an global stelle 500.000
     g_odata[2*thid] = temp[2*localId]; // write results to device memory
     g_odata[2*thid+1] = temp[2*localId+1];
 }

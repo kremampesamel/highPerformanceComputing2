@@ -21,7 +21,7 @@ public class Task1ImageRotate {
     static String programSource = "";
 
     public static void main(String args[]) throws IOException {
-        float rotation = 30.0f;
+        float rotation = 43.0f;
 
         // Enable exceptions and subsequently omit error checks in this sample
         CL.setExceptionsEnabled(true);

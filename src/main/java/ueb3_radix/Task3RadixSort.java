@@ -1,15 +1,12 @@
 package ueb3_radix;
 
 import hpc_ue_2.Timeable;
-import jdk.nashorn.internal.runtime.ECMAException;
 import org.jocl.*;
 import util.JOCLHelper;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Random;
-import java.util.logging.Logger;
 
 import static org.jocl.CL.*;
 import static org.jocl.CL.CL_TRUE;
@@ -20,11 +17,9 @@ import static org.jocl.CL.clSetKernelArg;
  */
 public class Task3RadixSort implements Timeable, RadixSort {
 
-	private final int numberOfElements;
-	private final int numberOfWorkgroups;
+	private int numberOfElements;
+	private int numberOfWorkgroups;
 
-	public static final int MAX_DISPLAY= 10240;
-	final static Logger logger = Logger.getLogger(Task3RadixSort.class.getName());
 	private long wholeTime;
 	private long wholeExecutionTime;
 	private JOCLHelper jocl;
@@ -36,9 +31,7 @@ public class Task3RadixSort implements Timeable, RadixSort {
 	private Pointer tmpArrayPointer;
 	private Pointer sortedArrayPointer;
 
-	public Task3RadixSort(int numberOfElements, int numberOfWorkgroups) {
-		this.numberOfElements = numberOfElements;
-		this.numberOfWorkgroups = numberOfWorkgroups;
+	public Task3RadixSort() {
 
 		this.init();
 	}
@@ -59,11 +52,10 @@ public class Task3RadixSort implements Timeable, RadixSort {
 
 		// Create input- and output data
 		int numberOfElements = 10240000;//16
-		int numberOfWorkgroups = numberOfElements / 4;
-		int[] inputDataArray = createInputData(numberOfElements);
+		int[] inputDataArray = RadixRunMain.createInputData(numberOfElements);
 
-		Task3RadixSort sort = new Task3RadixSort(numberOfElements, numberOfWorkgroups);
-		int[] result = sort.executeForArray(inputDataArray);
+		Task3RadixSort sort = new Task3RadixSort();
+		int[] result = sort.executeForArray(inputDataArray, 8);
 
 		String line = Timeable.printTime(numberOfElements, sort);
 		System.out.println(line);
@@ -72,9 +64,12 @@ public class Task3RadixSort implements Timeable, RadixSort {
 
 
 	@Override
-	public int[] executeForArray(int[] inputDataArray) {
+	public int[] executeForArray(int[] inputDataArray, int k) {
 		// Enable exceptions and subsequently omit error checks in this sample
 		CL.setExceptionsEnabled(true);
+
+		numberOfElements = inputDataArray.length;
+		numberOfWorkgroups = numberOfElements / 4;
 
 		sortedArray = new int[numberOfElements];
 		tmpArray = new int[numberOfElements];
@@ -109,25 +104,24 @@ public class Task3RadixSort implements Timeable, RadixSort {
 		int n = numberOfElements;
 
 		// Start with a k = 8;
-		iterativeMerge(kernelMerge, memObjects, numberOfElements, 8);
+		iterativeMerge(kernelMerge, memObjects, numberOfElements, k);
 
 		long executionTime = timeFromBegin(start);
 
+		cleanup();
+
+		wholeTime = System.currentTimeMillis() - start;
+		wholeExecutionTime = executionTime;
+
+		return finalArray;
+	}
+
+	public void cleanup() {
 		try {
 			jocl.releaseAndFinish();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
-		wholeTime = System.currentTimeMillis() - start;
-		wholeExecutionTime = executionTime;
-
-		try {
-			verifyAndPrintResults(inputDataArray, finalArray);
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-		return finalArray;
 	}
 
 	private void performOneSort(cl_mem[] memObjects) {
@@ -229,39 +223,7 @@ public class Task3RadixSort implements Timeable, RadixSort {
 		}
 	}
 
-	private static int[] createInputData(int numberOfElements) {
-		int[] inputData = new int[numberOfElements];
-		Random random = new Random();
-		for (int i = 0; i < inputData.length; i++) {
-			inputData[i] = random.nextInt(Integer.MAX_VALUE);
-		}
-		return inputData;
-	}
 
-	private static void verifyAndPrintResults(int[] inputData, int[] resultArray) throws Exception {
-		System.out.println("Input data:");
-
-		if (resultArray.length < MAX_DISPLAY) {
-			for (int i = 0; i < inputData.length; i++) {
-				System.out.print(inputData[i] + " ");
-			}
-
-			System.out.println("\nFinal scanned array:");
-			for (int i = 0; i < resultArray.length; i++) {
-				System.out.print(resultArray[i] + " ");
-			}
-		}
-
-		int current = Integer.MIN_VALUE;
-
-		for (int value : resultArray) {
-			if (value < current) {
-				throw new RuntimeException("That is not a sorted array.");
-			}
-			current = value;
-		}
-		System.out.print("Array is sorted correctly");
-	}
 
 	@Override
 	public long getTotalTime() {

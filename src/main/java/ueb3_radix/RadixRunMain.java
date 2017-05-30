@@ -22,7 +22,7 @@ public class RadixRunMain {
 
 	private static void createStats(int k) {
 
-		int startSize = 1024;
+		int startSize = 1048576*4;
 		int size = startSize;
 
 		int setSize = 10;
@@ -30,14 +30,14 @@ public class RadixRunMain {
 
 		List<String> lines = new ArrayList<>();
 		for (int i = 0; i < setSize; i++) {
-			size = (int) (startSize * Math.pow(2, i));
+			size = (int) (startSize * i);
 			int[] testSet = createInputData(size);
 			Task3RadixSort sort = new Task3RadixSort();
 
-			log("Run Test for " + size + " elements");
-			int[] result = sort.executeForArray(testSet, k);
+			log("Run Test i="+i+"for " + size + " elements");
 
 			try {
+				int[] result = sort.executeForArray(testSet, k);
 				verifyAndPrintResults(testSet,result);
 				String line = Timeable.printTimeCSV(size, sort);
 				lines.add(line);

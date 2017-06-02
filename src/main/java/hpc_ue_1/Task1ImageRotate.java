@@ -1,6 +1,7 @@
-package ueb1_image_rotation_temp;
+package hpc_ue_1;
 
 
+import helper.JOCLHelper;
 import org.apache.commons.io.FileUtils;
 import org.jocl.*;
 
@@ -21,7 +22,7 @@ public class Task1ImageRotate {
     static String programSource = "";
 
     public static void main(String args[]) throws IOException {
-        float rotation = 45.0f;
+        float rotation = -40.0f;
 
         // Enable exceptions and subsequently omit error checks in this sample
         CL.setExceptionsEnabled(true);
@@ -46,7 +47,6 @@ public class Task1ImageRotate {
         final long deviceType = CL_DEVICE_TYPE_ALL;
         final int deviceIndex = 0;
 
-
         // Obtain the platforms
         int numPlatformsArray[] = new int[1];
         clGetPlatformIDs(0, null, numPlatformsArray);
@@ -57,9 +57,9 @@ public class Task1ImageRotate {
 
         // print info on platforms
         for (int i = 0; i < numPlatforms; i++) {
-            System.out.println("platform " + i + " name: " + getString(platforms[i], CL_PLATFORM_NAME));
-            System.out.println("platform " + i + " vendor: " + getString(platforms[i], CL_PLATFORM_VENDOR));
-            System.out.println("platform " + i + " version: " + getString(platforms[i], CL_PLATFORM_VERSION));
+            System.out.println("platform " + i + " name: " + JOCLHelper.getString(platforms[i], CL_PLATFORM_NAME));
+            System.out.println("platform " + i + " vendor: " + JOCLHelper.getString(platforms[i], CL_PLATFORM_VENDOR));
+            System.out.println("platform " + i + " version: " + JOCLHelper.getString(platforms[i], CL_PLATFORM_VERSION));
         }
 
         // Obtain a platform ID
@@ -142,7 +142,7 @@ public class Task1ImageRotate {
 
         outputImage.setRGB(0, 0, outputImage.getWidth(), outputImage.getHeight(), dstArray, 0, outputImage.getWidth());
 
-        File outputfile = new File("saved.png");
+        File outputfile = new File("rotated.png");
         ImageIO.write(outputImage, "png", outputfile);
 
         // Release kernel, program, and memory objects
@@ -154,45 +154,4 @@ public class Task1ImageRotate {
         clReleaseContext(context);
     }
 
-    /**
-     * Returns the value of the device info parameter with the given name
-     *
-     * @param device    The device
-     * @param paramName The parameter name
-     * @return The value
-     */
-    private static String getString(cl_device_id device, int paramName) {
-        // Obtain the length of the string that will be queried
-        long size[] = new long[1];
-        clGetDeviceInfo(device, paramName, 0, null, size);
-
-        // Create a buffer of the appropriate size and fill it with the info
-        byte buffer[] = new byte[(int) size[0]];
-        clGetDeviceInfo(device, paramName, buffer.length, Pointer.to(buffer), null);
-
-        // Create a string from the buffer (excluding the trailing \0 byte)
-        return new String(buffer, 0, buffer.length - 1);
-    }
-
-    /**
-     * Returns the value of the platform info parameter with the given name
-     *
-     * @param platform  The platform
-     * @param paramName The parameter name
-     * @return The value
-     */
-    private static String getString(cl_platform_id platform, int paramName) {
-        // Obtain the length of the string that will be queried
-        long size[] = new long[1];
-        clGetPlatformInfo(platform, paramName, 0, null, size);
-
-        // Create a buffer of the appropriate size and fill it with the info
-        byte buffer[] = new byte[(int) size[0]];
-        clGetPlatformInfo(platform, paramName, buffer.length, Pointer.to(buffer), null);
-
-        // Create a string from the buffer (excluding the trailing \0 byte)
-        return new String(buffer, 0, buffer.length - 1);
-    }
-
 }
-

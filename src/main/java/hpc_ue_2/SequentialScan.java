@@ -1,12 +1,14 @@
 package hpc_ue_2;
 
+import helper.Timeable;
+
 import java.io.IOException;
 
 
 /**
  * Java implementation for comparison
  */
-public class  SequentialScan implements ScanOperation , Timeable{
+public class  SequentialScan implements ScanOperation , Timeable {
 
     private long totalTime;
 
@@ -20,8 +22,6 @@ public class  SequentialScan implements ScanOperation , Timeable{
 
         System.out.println(Timeable.printTime(results.length,scan));
     }
-
-
 
     public static int[] executeScanForElements(int[] numbers) {
         int[] result = new int[numbers.length];

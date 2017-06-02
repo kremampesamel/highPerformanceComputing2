@@ -1,4 +1,4 @@
-package hpc_ue_2;
+package helper;
 
 public interface Timeable {
 

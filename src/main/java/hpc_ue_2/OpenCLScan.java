@@ -1,11 +1,11 @@
 package hpc_ue_2;
 
+import helper.Timeable;
 import org.jocl.*;
-import util.JOCLHelper;
+import helper.JOCLHelper;
 
 
 import java.util.Random;
-import java.util.logging.Logger;
 
 import static org.jocl.CL.*;
 
@@ -24,15 +24,13 @@ public class OpenCLScan implements ScanOperation, Timeable {
 
     public static void main(String args[]) throws Exception {
 
-        // Create input- and output data
-        int numberOfElements = 1024;//16
-        int numberOfWorkgroups = 32;//4  this seems to work for multiples correlated to number of elements
+        int numberOfElements = 16384;
+        int numberOfWorkgroups = 32;//correlated to number of elements
 
-        //TODO: fill with 0 to create full size if not power of 2
-        int[] inputDataArray = createInputData(numberOfElements); // {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+        int[] inputDataArray = createInputData(numberOfElements);
 
         OpenCLScan scan = new OpenCLScan(numberOfElements, numberOfWorkgroups);
-        int[] result = scan.executeForNElements(inputDataArray);
+        scan.executeForNElements(inputDataArray);
 
         System.out.println("OpenCL execution information: ");
         String line = Timeable.printTime(numberOfElements, scan);
@@ -53,13 +51,11 @@ public class OpenCLScan implements ScanOperation, Timeable {
         JOCLHelper jocl = new JOCLHelper(platformIndex, deviceType, deviceIndex);
         jocl.init();
 
-        cl_context context = jocl.createContext();
+        jocl.createContext();
 
         // Create the kernel
         cl_kernel kernel = jocl.createKernel("prescan", "sourceTask2_prescan.cl");
-
         cl_kernel kernelFinalScan = jocl.createKernel("finalScan", "sourceTask2_finalScan.cl");
-
 
         long global_work_size[] = new long[]{numberOfElements / 2};//anzahl der threads
         long local_work_size[] = new long[]{(numberOfElements / 2) / numberOfWorkgroups};//groß wie die workgroup
@@ -77,7 +73,6 @@ public class OpenCLScan implements ScanOperation, Timeable {
 
         int finalScannedArray[] = new int[numberOfElements];
         Pointer finalScannedArrayPointer = Pointer.to(finalScannedArray);
-
 
         long start = System.currentTimeMillis();
         // Allocate the memory objects for the input- and output data
@@ -108,7 +103,6 @@ public class OpenCLScan implements ScanOperation, Timeable {
         jocl.bufferIntoPointer(memObjects[1], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, outputOfFirstScanPointer);
         jocl.bufferIntoPointer(memObjects[2], CL_TRUE, 0, Sizeof.cl_int * numberOfWorkgroups, workgroupSumsPointer);
         long secondPrepareTime = timeFromBegin(start, executionTime);
-
 
         // set kernel arguments 2nd time
         clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(memObjects[2]));//sums
@@ -143,7 +137,6 @@ public class OpenCLScan implements ScanOperation, Timeable {
 
         wholeTime = System.currentTimeMillis() - start;
         wholeExecutionTime = executionTime + secondExecutionTime + finalScanTime;
-        // System.out.println(String.format("Scan %s elements in %s ms", 16,  wholeTime));
 
         try {
             verifyAndPrintResults(inputDataArray, outputOfFirstScanArray, workgroupSumsArray, workgroupSumsScannedArray, finalScannedArray);
@@ -151,8 +144,6 @@ public class OpenCLScan implements ScanOperation, Timeable {
             throw new RuntimeException(e);
         }
         return finalScannedArray;
-
-
     }
 
     private static long timeFromBegin(long start, long... minus) {
@@ -178,24 +169,20 @@ public class OpenCLScan implements ScanOperation, Timeable {
             System.out.print(inputData[i] + " ");
         }
 
-//        System.out.println("Scan result:");
-//        for (int i = 0; i < outputOfFirstScanArray.length; i++) {
-//            System.out.print(outputOfFirstScanArray[i] + " ");
-//        }
-//
-//        System.out.println("\n\nSum result:");
-//        for (int i = 0; i < workgroupSumsArray.length; i++) {
-//            System.out.print(workgroupSumsArray[i] + " ");
-//        }
-//
-        //zwischensummen pro workgroup
-//
-//        dann wieder rückgängig
-//
-//        System.out.println("\n\nSum workgroup scan result:");
-//        for (int i = 0; i < workgroupSumsScannedArray.length; i++) {
-//            System.out.print(workgroupSumsScannedArray[i] + " ");
-//        }
+        System.out.println("Scan result:");
+        for (int i = 0; i < outputOfFirstScanArray.length; i++) {
+            System.out.print(outputOfFirstScanArray[i] + " ");
+        }
+
+        System.out.println("\n\nSum result:");
+        for (int i = 0; i < workgroupSumsArray.length; i++) {
+            System.out.print(workgroupSumsArray[i] + " ");
+        }
+
+        System.out.println("\n\nSum workgroup scan result:");
+        for (int i = 0; i < workgroupSumsScannedArray.length; i++) {
+            System.out.print(workgroupSumsScannedArray[i] + " ");
+        }
 
         System.out.println("\n\nFinal scanned array:");
         for (int i = 0; i < finalScannedArray.length; i++) {
@@ -205,12 +192,10 @@ public class OpenCLScan implements ScanOperation, Timeable {
         verifyResult(inputData, finalScannedArray);
     }
 
-
     private static void verifyResult(int[] inputDataArray, int[] finalScannedArray) throws Exception {
         long start = System.currentTimeMillis();
         int[] sequentialScanResult = SequentialScan.executeScanForElements(inputDataArray);
         long sequentialTime = timeFromBegin(start);
-
 
         for (int i = 0; i < finalScannedArray.length; i++) {
             if (sequentialScanResult[i] != finalScannedArray[i]) {
@@ -239,4 +224,5 @@ public class OpenCLScan implements ScanOperation, Timeable {
     public long getMemoryTime() {
         return wholeTime - wholeExecutionTime;
     }
+
 }

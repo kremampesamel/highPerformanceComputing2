@@ -1,8 +1,8 @@
-package ueb3_radix;
+package hpc_ueb_3;
 
-import hpc_ue_2.Timeable;
+import helper.Timeable;
 import org.jocl.*;
-import util.JOCLHelper;
+import helper.JOCLHelper;
 
 import java.util.ArrayList;
 import java.util.Collections;

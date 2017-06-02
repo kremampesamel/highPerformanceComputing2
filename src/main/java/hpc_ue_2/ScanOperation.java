@@ -1,9 +1,7 @@
 package hpc_ue_2;
 
-/**
- * Created by Flo on 25.05.2017.
- */
 public interface ScanOperation {
+
     /**
      * Implements the scan algorithm for a array with a given size 'size'
      * Must measure the elapsed (netto) time for the operation, preparation must not be included in time measurement.
@@ -12,8 +10,6 @@ public interface ScanOperation {
      * @return array with result
      */
     int[] executeForNElements(int[] data);
-
-
 
     /**
      * Creates an int array filled with random numbers

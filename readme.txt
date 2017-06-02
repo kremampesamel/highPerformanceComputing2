@@ -1,4 +1,4 @@
-Florian Hintermeier, Markus Pöchleitner, Michail Massaros
+Gruppenmitglieder: Florian Hintermeier, Markus Pöchleitner, Michail Massaros
 
 
 1 Image Rotation:

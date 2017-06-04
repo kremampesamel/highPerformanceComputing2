@@ -20,7 +20,7 @@ number of devices for platform 0: 2
 select device: 0
 
 Unser Program funktioniert bis zu einer Anzahl von 16384 Elementen. Es ist fähig Vielfache der
-Workgrouppengröße zu behandeln.
+workgroup Größe zu behandeln.
 Dafür muss die Anzahl der Gruppen analog zur Anzahl der Elementen erhöht werden.
 Leider kommt es bei höherer Anzahl (höher als 16384 Elemente) zu einer org.jocl.CLException: CL_OUT_OF_RESOURCES.
 

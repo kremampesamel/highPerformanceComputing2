@@ -27,7 +27,7 @@ Leider kommt es bei höherer Anzahl (höher als 16384 Elemente) zu einer org.joc
 Der Algorithmus ist langsamer als die sequentielle Version, allerdings geht viel Zeit im Aufbau verloren.
 
 Es gibt eine separate Grafik die eine Gegenüberstellung der Algorithmen darstellt, um die Performanz zu
-vergleichen.
+vergleichen. (welche grafik? ) kann man
 
 
 3 Radix Sort

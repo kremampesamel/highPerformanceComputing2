@@ -1,35 +1,55 @@
+int findLargestNum(int * array, int size){
+
+  int i;
+  int largestNum = -1;
+
+  for(i = 0; i < size; i++){
+    if(array[i] > largestNum)
+      largestNum = array[i];
+  }
+
+  return largestNum;
+}
+
+// Radix Sort
+/*
+void radixSort(int * in, int * out, int size, int local_index){
+  // Base 10 is used
+  int i;
+  int semiSorted[size];
+  int significantDigit = 1;
+  int * array = in;
+  int largestNum = findLargestNum(array, size);
+
+  while (largestNum / significantDigit > 0){
+    int bucket[10] = { 0 };
+
+    // Counts the number of "keys" or digits that will go into each bucket
+    for (i = 0; i < size; i++)
+      bucket[(array[i] / significantDigit) % 10]++;
+
+    for (i = 1; i < 10; i++)
+      bucket[i] += bucket[i - 1];
+
+    // Use the bucket to fill a "semiSorted" array
+    for (i = size - 1; i >= 0; i--)
+      semiSorted[--bucket[(array[i] / significantDigit) % 10]] = array[i];
+
+    for (i = 0; i < size; i++)
+      array[i] = semiSorted[i];
+
+    significantDigit *= 10;
+  }
+}
+/**/
+
 __kernel void radix_sort8(
 	__global const int *global_data,
-	__global int* out
+	__global int* out,
+	//__local int* tmp,
+	const int num_total, const int bucket_size
 	) {
-    typedef union {
-        int vec;
-        int array[8];
-    } vec_array;
 
-    int one_count, zero_count;
-    int cmp_value = 1;
-    vec_array mask, ones, data;
-
-    data.vec = global_data[0];
-
-    for(int i=0; i<3; i++) {
-        zero_count = 0;
-        one_count = 0;
-        for(int j=0; j < 8; j++) {
-            if (data.array[j] & cmp_value) {
-                ones.array[one_count++] == data.array[j];
-            } else {
-                mask.array[zero_count++] = j;
-  }
-}
-        // created sorted vector
-        for (int j= zero_count; j < 8; j++) {
-            mask.array[j] = 8 - zero_count + j;
-  }
-        //data.vec = shuffle2(data.vec, ones.vec, mask.vec);
-        cmp_value <<= 1;
-}
-    //global_data[0] = data.vec;
-    out[0] = 42;
+	int thid = get_global_id(0);
+	// time is running out;
 }

@@ -1,9 +1,8 @@
 package hpc_ue_2;
 
+import helper.JOCLHelper;
 import helper.Timeable;
 import org.jocl.*;
-import helper.JOCLHelper;
-
 
 import java.util.Random;
 
@@ -37,6 +36,69 @@ public class OpenCLScan implements ScanOperation, Timeable {
         System.out.println(line);
     }
 
+    private static long timeFromBegin(long start, long... minus) {
+        long value = System.currentTimeMillis() - start;
+        for (long val : minus) {
+            value -= val;
+        }
+        return value;
+    }
+
+    private static int[] createInputData(int numberOfElements) {
+        int[] inputData = new int[numberOfElements];
+        Random random = new Random();
+        for (int i = 0; i < inputData.length; i++) {
+            inputData[i] = random.nextInt(11);
+        }
+        return inputData;
+    }
+
+    private static void verifyAndPrintResults(int[] inputData, int[] outputOfFirstScanArray, int[] workgroupSumsArray, int[] workgroupSumsScannedArray, int[] finalScannedArray) throws Exception {
+        System.out.println("\nInput data:");
+        for (int i = 0; i < inputData.length; i++) {
+            System.out.print(inputData[i] + " ");
+        }
+
+        System.out.println("Scan result:");
+        for (int i = 0; i < outputOfFirstScanArray.length; i++) {
+            System.out.print(outputOfFirstScanArray[i] + " ");
+        }
+
+        System.out.println("\n\nSum result:");
+        for (int i = 0; i < workgroupSumsArray.length; i++) {
+            System.out.print(workgroupSumsArray[i] + " ");
+        }
+
+        System.out.println("\n\nSum workgroup scan result:");
+        for (int i = 0; i < workgroupSumsScannedArray.length; i++) {
+            System.out.print(workgroupSumsScannedArray[i] + " ");
+        }
+
+        System.out.println("\n\nFinal scanned array:");
+        for (int i = 0; i < finalScannedArray.length; i++) {
+            System.out.print(finalScannedArray[i] + " ");
+        }
+
+        verifyResult(inputData, finalScannedArray);
+    }
+
+    private static void verifyResult(int[] inputDataArray, int[] finalScannedArray) throws Exception {
+        long start = System.currentTimeMillis();
+        int[] sequentialScanResult = SequentialScan.executeScanForElements(inputDataArray);
+        long sequentialTime = timeFromBegin(start);
+
+        for (int i = 0; i < finalScannedArray.length; i++) {
+            if (sequentialScanResult[i] != finalScannedArray[i]) {
+                throw new Exception("did not work correctly");
+            }
+        }
+        System.out.println("\n\nSequential execution array:");
+        for (int i = 0; i < sequentialScanResult.length; i++) {
+            System.out.print(sequentialScanResult[i] + " ");
+        }
+
+        System.out.println(String.format("\n\nSequential execution information:\nScanned elements: n=%s total:%s ms\n", inputDataArray.length, sequentialTime));
+    }
 
     @Override
     public int[] executeForNElements(int[] inputDataArray) {
@@ -144,70 +206,6 @@ public class OpenCLScan implements ScanOperation, Timeable {
             throw new RuntimeException(e);
         }
         return finalScannedArray;
-    }
-
-    private static long timeFromBegin(long start, long... minus) {
-        long value = System.currentTimeMillis() - start;
-        for (long val : minus) {
-            value -= val;
-        }
-        return value;
-    }
-
-    private static int[] createInputData(int numberOfElements) {
-        int[] inputData = new int[numberOfElements];
-        Random random = new Random();
-        for (int i = 0; i < inputData.length; i++) {
-            inputData[i] = random.nextInt(11);
-        }
-        return inputData;
-    }
-
-    private static void verifyAndPrintResults(int[] inputData, int[] outputOfFirstScanArray, int[] workgroupSumsArray, int[] workgroupSumsScannedArray, int[] finalScannedArray) throws Exception {
-        System.out.println("\nInput data:");
-        for (int i = 0; i < inputData.length; i++) {
-            System.out.print(inputData[i] + " ");
-        }
-
-        System.out.println("Scan result:");
-        for (int i = 0; i < outputOfFirstScanArray.length; i++) {
-            System.out.print(outputOfFirstScanArray[i] + " ");
-        }
-
-        System.out.println("\n\nSum result:");
-        for (int i = 0; i < workgroupSumsArray.length; i++) {
-            System.out.print(workgroupSumsArray[i] + " ");
-        }
-
-        System.out.println("\n\nSum workgroup scan result:");
-        for (int i = 0; i < workgroupSumsScannedArray.length; i++) {
-            System.out.print(workgroupSumsScannedArray[i] + " ");
-        }
-
-        System.out.println("\n\nFinal scanned array:");
-        for (int i = 0; i < finalScannedArray.length; i++) {
-            System.out.print(finalScannedArray[i] + " ");
-        }
-
-        verifyResult(inputData, finalScannedArray);
-    }
-
-    private static void verifyResult(int[] inputDataArray, int[] finalScannedArray) throws Exception {
-        long start = System.currentTimeMillis();
-        int[] sequentialScanResult = SequentialScan.executeScanForElements(inputDataArray);
-        long sequentialTime = timeFromBegin(start);
-
-        for (int i = 0; i < finalScannedArray.length; i++) {
-            if (sequentialScanResult[i] != finalScannedArray[i]) {
-                throw new Exception("did not work correctly");
-            }
-        }
-        System.out.println("\n\nSequential execution array:");
-        for (int i = 0; i < sequentialScanResult.length; i++) {
-            System.out.print(sequentialScanResult[i] + " ");
-        }
-
-        System.out.println(String.format("\n\nSequential execution information:\nScanned elements: n=%s total:%s ms\n", inputDataArray.length, sequentialTime));
     }
 
     @Override

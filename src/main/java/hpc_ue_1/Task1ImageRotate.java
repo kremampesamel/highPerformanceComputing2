@@ -1,6 +1,5 @@
 package hpc_ue_1;
 
-
 import helper.JOCLHelper;
 import org.apache.commons.io.FileUtils;
 import org.jocl.*;

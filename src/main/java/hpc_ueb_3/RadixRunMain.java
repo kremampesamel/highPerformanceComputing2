@@ -29,7 +29,6 @@ public class RadixRunMain {
 			int[] testSet = createInputData(size);
 			Task3RadixSort sort = new Task3RadixSort();
 
-
 			if (lines.size() > 0) {
 				String lastLine = lines.get(lines.size()-1);
 				log("Last Test i=" + (lines.size()-1) + " for "+lastLine);

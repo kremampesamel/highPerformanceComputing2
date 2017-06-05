@@ -45,7 +45,6 @@ public class Task3RadixSort implements Timeable, RadixSort {
 		jocl.init();
 		jocl.createContext();
 		CL.setExceptionsEnabled(true);
-
 	}
 
 	public static void main(String args[]) throws Exception {

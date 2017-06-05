@@ -21,15 +21,15 @@ __kernel void radix_sort8(
                 ones.array[one_count++] == data.array[j];
             } else {
                 mask.array[zero_count++] = j;
-            }
-        }
+  }
+}
         // created sorted vector
         for (int j= zero_count; j < 8; j++) {
             mask.array[j] = 8 - zero_count + j;
-        }
+  }
         //data.vec = shuffle2(data.vec, ones.vec, mask.vec);
         cmp_value <<= 1;
-    }
+}
     //global_data[0] = data.vec;
     out[0] = 42;
 }
